@@ -1,0 +1,23 @@
+diff --git a/legacy.py b/legacy.py
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/legacy.py
+@@ -0,0 +1,18 @@
++def load(path):
++    try:
++        with open(path) as f:
++            data = f.read()
++    except:
++        return None
++    return data
++
++
++def parse(data):
++    try:
++        return int(data)
++    except:
++        try:
++            return float(data)
++        except:
++            return None

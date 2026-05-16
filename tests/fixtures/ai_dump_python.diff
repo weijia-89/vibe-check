@@ -1,0 +1,60 @@
+diff --git a/user_service.py b/user_service.py
+new file mode 100644
+index 0000000..7654321
+--- /dev/null
++++ b/user_service.py
+@@ -0,0 +1,55 @@
++"""User service module for managing user-related operations."""
++
++
++class UserService:
++    """A service class for handling user operations."""
++
++    def __init__(self, database):
++        """Initialize the UserService with a database connection.
++
++        Args:
++            database: The database connection object.
++        """
++        # Initialize the database connection
++        self.database = database
++
++    def create_user(self, user_data):
++        """Create a new user in the database.
++
++        Args:
++            user_data: Dictionary containing user information.
++
++        Returns:
++            The created user object.
++        """
++        # Validate the user data
++        try:
++            # Check if the user data is valid
++            validated_data = self.validate_user_data(user_data)
++            # Insert the user into the database
++            user = self.database.insert(validated_data)
++            # Return the created user
++            return user
++        except Exception:
++            # Log the error and return None
++            print("Error creating user")
++            return None
++
++    def validate_user_data(self, user_data):
++        """Validate the user data dictionary.
++
++        Args:
++            user_data: Dictionary containing user information.
++
++        Returns:
++            The validated user data.
++        """
++        # Initialize the validated data
++        validated_data = {}
++        # Iterate over each field in the user data
++        for field in user_data:
++            # Process the field
++            validated_data[field] = user_data[field]
++        # Return the validated data
++        return validated_data

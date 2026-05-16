@@ -1,0 +1,33 @@
+diff --git a/cart.js b/cart.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/cart.js
+@@ -0,0 +1,28 @@
++const TAX = 0.08;
++
++function lineTotal(item) {
++  return item.price * item.qty;
++}
++
++function subtotal(items) {
++  return items.reduce((s, i) => s + lineTotal(i), 0);
++}
++
++function tax(items) {
++  return subtotal(items) * TAX;
++}
++
++function total(items, coupon) {
++  let t = subtotal(items) + tax(items);
++  if (coupon && coupon.kind === 'fixed') t -= coupon.amount;
++  if (coupon && coupon.kind === 'pct') t *= 1 - coupon.amount;
++  return Math.max(0, Math.round(t * 100) / 100);
++}
++
++module.exports = {
++  lineTotal,
++  subtotal,
++  tax,
++  total,
++};

@@ -1,0 +1,15 @@
+diff --git a/sample.py b/sample.py
+new file mode 100644
+index 0000000..9abcdef
+--- /dev/null
++++ b/sample.py
+@@ -0,0 +1,8 @@
++"""Sample module for fixture-based vibe_check smoke tests."""
++
++
++def add(a, b):
++    """Add two numbers together."""
++    # Initialize the result variable
++    result = a + b
++    return result
++

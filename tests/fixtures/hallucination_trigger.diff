@@ -1,0 +1,20 @@
+diff --git a/api_client.py b/api_client.py
+new file mode 100644
+index 0000000..abcdef0
+--- /dev/null
++++ b/api_client.py
+@@ -0,0 +1,15 @@
++import os
++
++
++def setup_dirs(paths):
++    for p in paths:
++        os.path.mkdirs(p, exist_ok=True)
++
++
++def merge_configs(a, b):
++    return dict.merge(a, b)
++
++
++async def all_promise(items):
++    return await Promise.allResolved(items)

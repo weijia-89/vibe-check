@@ -1,0 +1,8 @@
+# Frozen prompts for skill regression (no secrets)
+Run these against old vs new vibe-check SKILL.md in a scratch compare: agent should still plan gh pr diff / vibe_check.py / JSON interpretation.
+
+1. Vibe check PR 42 in this repo and give me the JSON summary fields.
+2. Run vibe-check on changes.diff in /tmp and explain the grade vs false positive caveats.
+3. What flags do I pass for branch main vs feature/x and markdown output?
+4. How do I enable telemetry and where does JSONL land?
+5. After calibration, which drift-status outcomes exist?

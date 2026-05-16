@@ -1,0 +1,52 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify stdlib-only (no pip install)
+        run: |
+          # Project commits to stdlib-only. Confirm there is no requirements file.
+          if [ -f requirements.txt ] || [ -f setup.py ] || [ -f pyproject.toml ]; then
+            echo "Project is stdlib-only by design; no requirements/setup files expected."
+            exit 1
+          fi
+
+      - name: Unit tests
+        run: python -m unittest tests/test_analyzers.py -v
+
+      - name: Integration smoke
+        run: bash tests/test_skill_smoke.sh
+
+      - name: Claims-ledger lint (Mode A — citation reachability)
+        run: python scripts/check_claims.py
+
+      - name: Claims-ledger lint (Mode B — quote enforcement, strict)
+        run: python scripts/check_claims.py --strict-quotes
+
+      - name: Dogfood — run vibe_check on its own source
+        run: |
+          # Construct a synthetic diff of vibe_check.py and run the tool on it.
+          # We don't assert a specific grade here (the real assertion lives in
+          # tests/test_analyzers.py::TestEdgeCaseDepthPython::test_self_dogfood_realistic_depth)
+          # — we just verify the tool runs end-to-end on its own source.
+          (printf '%s\n' '+++ b/scripts/vibe_check.py' '@@ -0,0 +1,9999 @@'; sed 's/^/+/' scripts/vibe_check.py) | \
+            python scripts/vibe_check.py --format json > /tmp/dogfood.json
+          python -c "import json; d=json.load(open('/tmp/dogfood.json')); assert d['grade'] in 'ABCDF'; print('dogfood grade:', d['grade'], 'prob:', d['overall_ai_probability'])"

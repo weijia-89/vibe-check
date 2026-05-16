@@ -1,0 +1,6 @@
+[
+  {
+    "pattern": "\\bunsafe_placeholder_api\\b",
+    "desc": "Replace with org-specific patterns; test on sample diffs before enabling in CI"
+  }
+]

@@ -1,0 +1,38 @@
+diff --git a/utils.py b/utils.py
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/utils.py
+@@ -0,0 +1,32 @@
++import re
++
++_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
++
++
++def parse_date(s):
++    m = _DATE_RE.search(s or "")
++    if not m:
++        raise ValueError(f"bad date: {s!r}")
++    return m.group(0)
++
++
++def chunk(xs, n):
++    if n <= 0:
++        raise ValueError("n must be > 0")
++    out = []
++    cur = []
++    for x in xs:
++        cur.append(x)
++        if len(cur) == n:
++            out.append(cur)
++            cur = []
++    if cur:
++        out.append(cur)
++    return out
++
++
++def safe_div(a, b):
++    try:
++        return a / b
++    except ZeroDivisionError:
++        return None

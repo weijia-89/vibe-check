@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+
+# Local outputs and telemetry (see SECURITY.md)
+outputs/
+**/vibe_telemetry/
+*.backup
+
+# Scan artifacts. PR identifiers can be sensitive depending on context; keep local.
+scripts/vibe_detect/vibe_detect_results.json
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
