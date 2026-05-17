@@ -60,6 +60,6 @@ Beyond the pre-PR gate:
 
 ## What's deliberately NOT here
 
-- Subjective taste checks ("does the prose feel good"). Use `deai` skill or peer review.
+- Subjective taste checks ("does the prose feel good"). Use peer review or a dedicated prose-review skill if you have one.
 - Anything that requires trusting the author's word — every checkbox above can be verified by running a command.
 - Pre-checked items. If you check a box, paste the command output into the PR body.
