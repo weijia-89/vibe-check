@@ -204,6 +204,14 @@ See [`SECURITY.md`](SECURITY.md). Short version:
 - Telemetry is local JSONL. Secrets that appear in a diff never round-trip through this tool. Only derived metrics do.
 - Internal scan artifacts stay in `.gitignore`.
 
+## Related portfolio repos
+
+- **`weijia-89/palamedes`**: rigorous-research skill plus multi-agent synthesis prompt. Composes with this repo on AI-generated code: claim-verify the research output first, then run any patch through `vibe-check` before merge.
+- **`weijia-89/playwrighter`**: production Playwright pattern library. Pair with `vibe-check` for QA work: patterns shape the test, scanner flags AI-tells in the diff.
+- **`weijia-89/trainer.skill`**: routing skill for an 8-specialist agent toolkit. Its `form-check` specialist references this repo's signals during code-review and adversarial-review modes.
+
+---
+
 ## Changelog
 
 See [`CHANGELOG.md`](CHANGELOG.md).
