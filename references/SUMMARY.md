@@ -19,31 +19,31 @@ value is *prompting reviewer attention*, not classification.
 
 ```
 vibe-check/
-├── SKILL.md                    — Trigger rules, workflow, methodology, references
-├── README.md                   — Install + run; full feature surface
-├── CHANGELOG.md                — Release notes (v0.2.0 = honest framing)
+├── SKILL.md: Trigger rules, workflow, methodology, references
+├── README.md: Install + run; full feature surface
+├── CHANGELOG.md: Release notes (v0.2.0 = honest framing)
 ├── scripts/
-│   ├── vibe_check.py           — Stdlib CLI scorer
-│   ├── calibration_pipeline.py — Per-codebase calibration on labeled PRs
-│   ├── check_claims.py         — Two-mode citation lint (reachability + quotes)
-│   └── vibe_detect/            — Older PR-batch scanner (incident workflows)
+│   ├── vibe_check.py: Stdlib CLI scorer
+│   ├── calibration_pipeline.py: Per-codebase calibration on labeled PRs
+│   ├── check_claims.py: Two-mode citation lint (reachability + quotes)
+│   └── vibe_detect/: Older PR-batch scanner (incident workflows)
 ├── references/
-│   ├── CLAIMS.md               — Quote-level ledger (literal abstract text)
-│   ├── CALIBRATION_NOTES.md    — Per-signal accounting of speculative priors
-│   └── EVIDENCE_LEDGER.md      — Bibliography
+│   ├── CLAIMS.md: Quote-level ledger (literal abstract text)
+│   ├── CALIBRATION_NOTES.md: Per-signal accounting of speculative priors
+│   └── EVIDENCE_LEDGER.md: Bibliography
 └── tests/
-    ├── test_analyzers.py       — 22 unit tests (incl. v0.2.0 bug regressions)
-    └── test_skill_smoke.sh     — Integration smoke (no `|| true`)
+    ├── test_analyzers.py, 22 unit tests (incl. v0.2.0 bug regressions)
+    └── test_skill_smoke.sh: Integration smoke (no `|| true`)
 ```
 
-## Signal ensemble (default weights — SPECULATIVE PRIORS)
+## Signal ensemble (default weights: SPECULATIVE PRIORS)
 
 CCR(0.18) + docstring(0.15) + naming(0.13) + error_handling(0.12) + declarative(0.10) +
 func_length(0.08) + comment_phrasing(0.08) + hallucinated_apis(0.06) + edge_depth(0.05) +
 commit_meta(0.05). Total = 1.0.
 
 Defaults are authored priors, not fitted on labeled data. CLAIMS C-007 (Tao et al.) shows
-signal magnitude varies drastically across LLMs — fixed weights cannot generalize. Run
+signal magnitude varies drastically across LLMs, fixed weights cannot generalize. Run
 `scripts/calibration_pipeline.py` on ≥100 labeled PRs from your codebase before quoting any
 number. See `references/CALIBRATION_NOTES.md` for per-signal provenance.
 
@@ -60,12 +60,12 @@ file influence is also weighted by added-line count.
 
 - **Hallucinated APIs.** 12 regex patterns; high precision when fires.
 - **Commit metadata.** AI-tool name in title/body/Co-authored-by trailer; high precision.
-- **Bare `except:` (Python).** Tiered evidence — bare `except:` is a strong signal; `except
+- **Bare `except:` (Python).** Tiered evidence, bare `except:` is a strong signal; `except
   Exception` is a soft signal; specific exception types are not flagged.
 
 ## Known weak / language-confounded signals
 
-- **Naming uniformity in {Python, Go}.** PEP 8 / gofmt enforce style — high uniformity is the
+- **Naming uniformity in {Python, Go}.** PEP 8 / gofmt enforce style, high uniformity is the
   language baseline, not an AI marker. Capped at 0.4 (soft signal only) for these languages.
 - **Function length CV in `--diff` mode.** Diff-only approximation; confidence capped at 0.4.
 - **Comment-to-code ratio.** Tao et al. (CLAIMS C-007) report AUC-ROC varies 0.68–0.96 across

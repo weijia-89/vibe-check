@@ -110,7 +110,7 @@ Six components form a closed loop. Each is implemented in `vibe_check.py` with n
 
 ### Component 1: Telemetry collection (`log_telemetry`)
 
-Every `analyze_diff()` call appends one JSON line to `$VIBE_CHECK_TELEMETRY_DIR/vibe_check_telemetry.jsonl`. Fields: timestamp, 10 signal values, overall score, residual-quantile margin bounds (key kept as `confidence_interval` for backwards compatibility — NOT a coverage interval; see CHANGELOG v0.2.0), calibration version, PR ID, repo name. No network calls.
+Every `analyze_diff()` call appends one JSON line to `$VIBE_CHECK_TELEMETRY_DIR/vibe_check_telemetry.jsonl`. Fields: timestamp, 10 signal values, overall score, residual-quantile margin bounds (key kept as `confidence_interval` for backwards compatibility: NOT a coverage interval; see CHANGELOG v0.2.0), calibration version, PR ID, repo name. No network calls.
 
 ### Component 2: Drift detection (`check_drift_status`)
 
@@ -148,11 +148,11 @@ No override file = no changes. Malformed file = warning to stderr, original thre
 
 CLI: `--model-evolution`.
 
-Compares signal profiles of high-confidence AI detections (score > 0.7) against `MODEL_FINGERPRINTS` — known ranges for GPT-4, Claude, and Gemini families. If >25% of detections are unmatched AND >50% of unmatched cluster in recent evaluations (last 30 days), returns `NEW_MODEL_PATTERN`.
+Compares signal profiles of high-confidence AI detections (score > 0.7) against `MODEL_FINGERPRINTS`, known ranges for GPT-4, Claude, and Gemini families. If >25% of detections are unmatched AND >50% of unmatched cluster in recent evaluations (last 30 days), returns `NEW_MODEL_PATTERN`.
 
 Surfaces co-drift signals: signals where unmatched detections differ by >10% from the overall AI mean, indicating which heuristics the new model shifts.
 
-### Component 6: Pattern discovery (`discover_new_patterns`) — stub
+### Component 6: Pattern discovery (`discover_new_patterns`), stub
 
 Planned: mine telemetry + cached diffs for recurring comment phrases in high-confidence AI code not already in `AI_COMMENT_PHRASES`. Returns candidate regex patterns. Requires diff caching (not yet implemented).
 

@@ -5,10 +5,10 @@
 > ("Autonomous Recalibration in Heuristic Code Classifiers: Mitigating Concept Drift in
 > the Era of Vibe Coding") drawing on 60+ sources with GRADE-assessed evidence. Sections
 > below are annotated with validation status:
-> - ✅ **VALIDATED** — Gemini confirmed with evidence
-> - ⚠️ **PARTIALLY VALIDATED** — Gemini confirmed direction but flagged limitations
-> - ❌ **REFUTED / DEPRIORITIZED** — Gemini recommended against or found insufficient evidence
-> - 🔬 **OPEN** — Not addressed or insufficient data; remains a research question
+> - ✅ **VALIDATED**: Gemini confirmed with evidence
+> - ⚠️ **PARTIALLY VALIDATED**: Gemini confirmed direction but flagged limitations
+> - ❌ **REFUTED / DEPRIORITIZED**: Gemini recommended against or found insufficient evidence
+> - 🔬 **OPEN**: Not addressed or insufficient data; remains a research question
 
 ## Executive Context
 
@@ -60,7 +60,7 @@ The following critical findings from the Gemini synthesis should inform any furt
 
 ## RESEARCH AREA 1: Concept Drift Detection in Classification Systems
 
-> **GEMINI STATUS: ✅ VALIDATED — This was the strongest section of Gemini's response.**
+> **GEMINI STATUS: ✅ VALIDATED: This was the strongest section of Gemini's response.**
 > Gemini confirmed ADWIN as optimal (GRADE: High), Wasserstein-2 as preferred global metric
 > (GRADE: Moderate), and BOCD as providing exact posterior uncertainty (GRADE: Moderate).
 > Key addition: multi-tiered decision logic combining per-signal ADWIN + global Wasserstein.
@@ -77,7 +77,7 @@ The following critical findings from the Gemini synthesis should inform any furt
 
 **Specific Topics to Investigate:**
 
-1. **ADWIN (Adaptive Windowing)** ✅ VALIDATED — Gemini GRADE: High
+1. **ADWIN (Adaptive Windowing)** ✅ VALIDATED: Gemini GRADE: High
    - How does it maintain a sliding window of "recent" concept?
    - What's the computational complexity for streaming data?
    - Published applications in production systems (cite papers)
@@ -108,7 +108,7 @@ The following critical findings from the Gemini synthesis should inform any furt
    - Tuning control limits for domain-specific acceptable error rates
    - **Gemini status:** Not addressed. Remains unexplored for code stylometry.
 
-5. **Bayesian Online Changepoint Detection** ⚠️ PARTIALLY VALIDATED — Gemini GRADE: Moderate
+5. **Bayesian Online Changepoint Detection** ⚠️ PARTIALLY VALIDATED: Gemini GRADE: Moderate
    - Papers: Adams & MacKay (2007), Fearnhead & Liu (2011)
    - Posterior probability of changepoint at time t
    - Computational tractability for high-dimensional data
@@ -121,7 +121,7 @@ The following critical findings from the Gemini synthesis should inform any furt
 - **Concept drift** (shift in decision boundary / P(y|x) changes)
 - **Real degradation** (our thresholds are fundamentally wrong now)
 
-We likely face concept drift: LLM-generated code distributions are shifting toward human distributions, but the true separation may still exist—it's just smaller.
+We likely face concept drift: LLM-generated code distributions are shifting toward human distributions, but the true separation may still exist, it's just smaller.
 
 **Gemini-confirmed decision logic (IMPLEMENTED in vibe_check.py):**
 ```
@@ -137,7 +137,7 @@ ELSE:
 
 ## RESEARCH AREA 2: Self-Calibrating / Self-Healing System Architecture
 
-> **GEMINI STATUS: ⚠️ PARTIALLY VALIDATED — Core architecture confirmed, but pseudo-labeling
+> **GEMINI STATUS: ⚠️ PARTIALLY VALIDATED: Core architecture confirmed, but pseudo-labeling
 > carries severe risk. Gemini recommends bounded threshold shifting over unbounded retraining.**
 
 ### 2.1 The Feedback Loop Problem
@@ -165,14 +165,14 @@ ELSE:
    - Merge velocity: code quality feedback loops?
    - **Caveat:** These are weak signals, prone to confounding
 
-3. **High-Confidence Pseudo-Labels** ❌ HIGH RISK — Gemini GRADE: Low
+3. **High-Confidence Pseudo-Labels** ❌ HIGH RISK: Gemini GRADE: Low
    - If vibe_check gives P(AI) = 0.95 or P(AI) = 0.05, use as self-training
    - Requires careful error analysis: what's our confidence calibration?
    - Risks: error compounding, feedback loop instability
    - Mitigation: human spot-checks on pseudo-labels
    - **Gemini finding:** "Severe feedback loop divergence risk." System risks becoming "perfectly
      calibrated to its own historical hallucinations." ACL 2025 literature documents this well.
-     Only viable if gated by conformal prediction CI — narrow-bound predictions only.
+     Only viable if gated by conformal prediction CI, narrow-bound predictions only.
    - **Mitigation implemented:** `vibe_check.py` uses conformal prediction CIs. Only top 5%
      most confident predictions would qualify as pseudo-labels.
 
@@ -185,7 +185,7 @@ ELSE:
 
 ### 2.2 Threshold Adaptation Without Ground Truth
 
-> **GEMINI STATUS: ✅ VALIDATED — Recommended 6-component decoupled pipeline.**
+> **GEMINI STATUS: ✅ VALIDATED: Recommended 6-component decoupled pipeline.**
 > Zero-label recalibration via Bregman projection + quantile shift confirmed as primary strategy.
 > Weak-label (top 5% pseudo-labels + logistic regression) confirmed as secondary, gated by CI.
 
@@ -203,7 +203,7 @@ ELSE:
    - ~~KL divergence~~, **Wasserstein-2 distance** (Gemini: preferred over KL), or Kolmogorov-Smirnov test
    - When distance exceeds threshold → flag drift
    - **Gemini finding:** Wasserstein-2 is theoretically optimal for measuring distributional shift.
-     However, it may behave unpredictably on discrete code syntax — this is the biggest scope
+     However, it may behave unpredictably on discrete code syntax, this is the biggest scope
      limitation. (GRADE: Moderate)
    - **Question:** Is shifting the decision threshold the right response, or are signals fundamentally broken?
 
@@ -230,7 +230,7 @@ ELSE:
 
 ### 2.3 A/B Testing Framework
 
-> **GEMINI STATUS: ✅ VALIDATED — Incorporated into deployment gate component.**
+> **GEMINI STATUS: ✅ VALIDATED: Incorporated into deployment gate component.**
 
 **Objective:** Compare old vs. new calibration before deploying.
 
@@ -241,17 +241,17 @@ ELSE:
 
 **Specific Design:**
 
-1. **Shadow Deployment** ✅ VALIDATED — Gemini Phase 3 (Months 5-6)
+1. **Shadow Deployment** ✅ VALIDATED: Gemini Phase 3 (Months 5-6)
    - Run new calibration in parallel, log results, don't change user feedback
    - Compare detection rates, precision/recall on known test sets
    - Monitor false positive / false negative trends
 
-2. **Canary Rollout** ✅ VALIDATED — Gemini Phase 4 (Months 7-8)
+2. **Canary Rollout** ✅ VALIDATED: Gemini Phase 4 (Months 7-8)
    - Route small % of PRs (5%) to new calibration
    - Monitor error rates, user complaints, confidence scores
    - Gradual rollout if no issues observed
 
-3. **Holdout Test Set** 🔬 OPEN — Not specifically addressed by Gemini
+3. **Holdout Test Set** 🔬 OPEN: Not specifically addressed by Gemini
    - Maintain curated, ground-truth labeled PR set (200-500 PRs)
    - Periodically re-evaluate both old and new calibrations on this set
    - Directly measure AUC, precision, recall changes
@@ -313,8 +313,8 @@ ELSE:
 
 ### 3.2 Theoretical Model: Why Convergence Happens
 
-> **GEMINI STATUS: ⚠️ PARTIALLY VALIDATED — RLHF/DPO mechanism confirmed, but with a twist.**
-> Gemini found that RLHF/DPO doesn't uniformly push toward human patterns — it specifically
+> **GEMINI STATUS: ⚠️ PARTIALLY VALIDATED: RLHF/DPO mechanism confirmed, but with a twist.**
+> Gemini found that RLHF/DPO doesn't uniformly push toward human patterns, it specifically
 > inflates docstring coverage and naming uniformity (over-indexing), while CCR remains fluctuating.
 > This means some signals get WORSE at discrimination not because LLMs match humans, but because
 > RLHF pushes them to over-document and over-standardize.
@@ -325,17 +325,17 @@ ELSE:
 - Can we predict which signals degrade when?
 
 **Hypotheses to Explore:**
-- **RLHF Hypothesis:** ✅ CONFIRMED — But nuanced. RLHF/DPO drives docstring over-indexing and naming hyper-uniformity (arXiv:2507.00838). Does NOT uniformly converge all signals toward human baselines.
-- **Data Composition:** 🔬 OPEN — Training on GitHub → model learns to match GitHub code style
-- **Alignment Techniques:** ✅ CONFIRMED — DPO emphasizes "helpfulness" → more documentation, clearer naming. This inflates signals 2 (docstrings) and 3 (naming) specifically.
-- **Scale Laws:** 🔬 OPEN — Larger models have more capacity to capture human-like subtleties
-- **Instruction Following:** 🔬 OPEN — Better instruction tuning → models follow human style guides → convergence
+- **RLHF Hypothesis:** ✅ CONFIRMED: But nuanced. RLHF/DPO drives docstring over-indexing and naming hyper-uniformity (arXiv:2507.00838). Does NOT uniformly converge all signals toward human baselines.
+- **Data Composition:** 🔬 OPEN: Training on GitHub → model learns to match GitHub code style
+- **Alignment Techniques:** ✅ CONFIRMED: DPO emphasizes "helpfulness" → more documentation, clearer naming. This inflates signals 2 (docstrings) and 3 (naming) specifically.
+- **Scale Laws:** 🔬 OPEN: Larger models have more capacity to capture human-like subtleties
+- **Instruction Following:** 🔬 OPEN: Better instruction tuning → models follow human style guides → convergence
 
 ---
 
 ## RESEARCH AREA 4: Concrete Self-Healing Module Design
 
-> **GEMINI STATUS: ✅ VALIDATED — Gemini proposed a 6-component decoupled pipeline that
+> **GEMINI STATUS: ✅ VALIDATED: Gemini proposed a 6-component decoupled pipeline that
 > supersedes the architecture below. The Gemini architecture has been IMPLEMENTED in vibe_check.py
 > (Phases 1-2: telemetry + drift detection). See RESEARCH.md for the full component table.**
 >
@@ -350,7 +350,7 @@ ELSE:
 
 **Objective:** Propose a complete system architecture.
 
-**Core Components (SUPERSEDED by Gemini 6-component architecture — retained for reference):**
+**Core Components (SUPERSEDED by Gemini 6-component architecture, retained for reference):**
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -569,7 +569,7 @@ ELSE
 
 ## RESEARCH AREA 5: Out-of-the-Box Thinking
 
-### 5.1 Dynamic Reference Generation ❌ DEPRIORITIZED — Gemini GRADE: Very Low
+### 5.1 Dynamic Reference Generation ❌ DEPRIORITIZED: Gemini GRADE: Very Low
 
 **Idea:** Instead of relying on fixed 2023-2025 baselines, periodically generate fresh samples from current LLMs.
 
@@ -594,7 +594,7 @@ implementation risk. Models may spoof human patterns when instructed. Scheduled 
 
 ### 5.2 Adversarial Calibration
 
-**Idea:** Prompt LLMs to write "human-like" code—use that as a harder positive class.
+**Idea:** Prompt LLMs to write "human-like" code, use that as a harder positive class.
 
 **Design:**
 1. **Prompt:** "Write Python code that is indistinguishable from human-written code. Use natural variable names, appropriate comments, realistic error handling."
@@ -630,7 +630,7 @@ implementation risk. Models may spoof human patterns when instructed. Scheduled 
 - Incentive misalignment: developers may want to hide use of AI
 - Sparse labels: requires critical mass of feedback
 
-### 5.4 Multi-Armed Bandit Approach ⚠️ PARTIALLY VALIDATED — Gemini GRADE: Moderate
+### 5.4 Multi-Armed Bandit Approach ⚠️ PARTIALLY VALIDATED: Gemini GRADE: Moderate
 
 **Idea:** Dynamically allocate weight to signals based on current discriminative power.
 
@@ -653,7 +653,7 @@ For each signal i:
 - May converge prematurely if unlucky in early sampling
 
 **Gemini finding:** Strong theoretical foundation in recommendation systems. Viable for
-dynamic signal weighting. Untested on live code — no published example in code stylometry.
+dynamic signal weighting. Untested on live code, no published example in code stylometry.
 Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 ### 5.5 Ensemble Signal Expansion
@@ -681,7 +681,7 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 ### 6.1 Methodology Assessment (GRADE + Cochrane RoB 2 Framework)
 
-> **GEMINI STATUS: ✅ VALIDATED — Gemini independently performed GRADE assessment on all methods.
+> **GEMINI STATUS: ✅ VALIDATED: Gemini independently performed GRADE assessment on all methods.
 > Table below updated with Gemini's ratings (original estimates shown for comparison).**
 
 **Objective:** Honestly assess the evidence quality for each proposed approach.
@@ -697,8 +697,8 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 | Proposal | Original Est. | Gemini GRADE | RoB Concerns | Upgrade/Downgrade Factors |
 |----------|---|---|---|---|
 | ADWIN drift detection | Moderate | **High** ⬆ | Proven in streaming ML; low risk of bias | **Upgrade**: Massive literature + RCTs |
-| Wasserstein-2 adaptation | — (new) | **Moderate** | Theoretically optimal; sensitive to outliers | **Downgrade**: Limited empirical results on code ASTs |
-| BOCD (Bayesian changepoint) | — (new) | **Moderate** | Exact inference; assumes known prior structures | **Upgrade**: Highly resilient to multidimensional scaling |
+| Wasserstein-2 adaptation |: (new) | **Moderate** | Theoretically optimal; sensitive to outliers | **Downgrade**: Limited empirical results on code ASTs |
+| BOCD (Bayesian changepoint) |: (new) | **Moderate** | Exact inference; assumes known prior structures | **Upgrade**: Highly resilient to multidimensional scaling |
 | Unsupervised recalibration (Bregman/quantile) | Low | **Moderate** ⬆ | Zero-label approach has theoretical backing | Gemini validated specific algorithm (Bregman projection) |
 | Pseudo-labeling retraining | Low | **Low** ⬇ | High confirmation bias; assumes conformal bounds hold | **Downgrade**: Feedback loop instability well-documented (ACL 2025) |
 | LLM reference generation | Very Low | **Very Low** | No published precedent in code detection | **Downgrade**: No published precedent in code stylometry |
@@ -712,7 +712,7 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 ### 6.2 Adversarial Self-Review: Against Self-Healing
 
-> **GEMINI STATUS: ✅ VALIDATED — Gemini conducted its own adversarial review and AGREED
+> **GEMINI STATUS: ✅ VALIDATED: Gemini conducted its own adversarial review and AGREED
 > with points 1 and 3 as strongest. Added two new critical arguments (6 and 7 below).**
 
 **Devil's Advocate Argument:**
@@ -723,15 +723,15 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 > 
 > 2. **Unobservable ground truth:** You don't know when you're wrong. With no external validation (labeled data), you have no signal that recalibration failed.
 > 
-> 3. **Concept drift vs. real degradation:** If thresholds collapse because LLMs truly converged toward human code, recalibrating won't help—you're using the same signals that are now worthless.
+> 3. **Concept drift vs. real degradation:** If thresholds collapse because LLMs truly converged toward human code, recalibrating won't help, you're using the same signals that are now worthless.
 > 
 > 4. **Operational complexity:** Self-healing adds monitoring, versioning, rollback logic. What's the operational debt? Are you trading one problem (manual recalibration) for another (automated failures)?
 > 
 > 5. **Incentives misaligned:** Recalibration that reduces false positives looks good to end users but may hide true AI usage. Is that what you want?
 > 
-> 6. **Discrete syntax problem (NEW — from Gemini):** Code is structured, deeply contextual, and fundamentally discrete. Continuous divergence metrics (Wasserstein) may behave unpredictably on sparse ASTs. This is applying continuous math to discrete structures — a domain transfer that is largely unproven.
+> 6. **Discrete syntax problem (NEW, from Gemini):** Code is structured, deeply contextual, and fundamentally discrete. Continuous divergence metrics (Wasserstein) may behave unpredictably on sparse ASTs. This is applying continuous math to discrete structures, a domain transfer that is largely unproven.
 > 
-> 7. **Manual may be safer (NEW — from Gemini):** Gemini's own adversarial review argues that manual periodic recalibration may be safer than automated miscalibration. Bounded threshold shifting mitigates but does not eliminate this risk.
+> 7. **Manual may be safer (NEW, from Gemini):** Gemini's own adversarial review argues that manual periodic recalibration may be safer than automated miscalibration. Bounded threshold shifting mitigates but does not eliminate this risk.
 
 **Counterargument (Pro Self-Healing):**
 
@@ -743,7 +743,7 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 > 
 > 3. **Hybrid model:** Combine self-healing with quarterly manual review. Not fully automated, but more responsive than annual recalibration. **Gemini agrees:** Human-in-the-loop required for Level 3 critical confidence alerts.
 > 
-> 4. **Transparency trade-off:** If users know the system adapts, they can audit it. Stale thresholds silently fail—worse.
+> 4. **Transparency trade-off:** If users know the system adapts, they can audit it. Stale thresholds silently fail, worse.
 > 
 > 5. **Inevitable obsolescence:** Without adaptation, the system will definitely fail. Self-healing may fail too, but at least you have a chance. **Gemini confirmed:** SWE-bench 4.4% → 71.7% proves static thresholds decay rapidly.
 
@@ -755,15 +755,15 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 **Be honest about what we don't know:**
 
-1. **Code stylometry:** ⚠️ IMPROVED — Gemini cross-validated against LLM-AuthorBench (32K programs), arXiv:2507.00838 (short-sample stylometry). We now have stronger evidence base, but still no RCT specific to this heuristic ensemble.
+1. **Code stylometry:** ⚠️ IMPROVED: Gemini cross-validated against LLM-AuthorBench (32K programs), arXiv:2507.00838 (short-sample stylometry). We now have stronger evidence base, but still no RCT specific to this heuristic ensemble.
 
-2. **Concept drift:** ⚠️ IMPROVED — ADWIN validated at GRADE: High. But self-supervised drift detection in code stylometry specifically remains unproven. The discrete syntax problem (Gemini's biggest scope limitation) applies here.
+2. **Concept drift:** ⚠️ IMPROVED: ADWIN validated at GRADE: High. But self-supervised drift detection in code stylometry specifically remains unproven. The discrete syntax problem (Gemini's biggest scope limitation) applies here.
 
-3. **LLM evolution:** ✅ IMPROVED — SWE-bench convergence data (4.4% → 71.7%) and RLHF/DPO mechanism (arXiv:2507.00838) provide concrete empirical grounding. Inter-model fingerprints remain separable at >97% (LLM-AuthorBench).
+3. **LLM evolution:** ✅ IMPROVED: SWE-bench convergence data (4.4% → 71.7%) and RLHF/DPO mechanism (arXiv:2507.00838) provide concrete empirical grounding. Inter-model fingerprints remain separable at >97% (LLM-AuthorBench).
 
-4. **Semi-supervised learning on code:** 🔬 STILL OPEN — No Gemini finding on this. Pseudo-labeling specifically flagged as high-risk.
+4. **Semi-supervised learning on code:** 🔬 STILL OPEN: No Gemini finding on this. Pseudo-labeling specifically flagged as high-risk.
 
-5. **Operational complexity:** 🔬 STILL OPEN — Not addressed by Gemini.
+5. **Operational complexity:** 🔬 STILL OPEN: Not addressed by Gemini.
 
 6. **Continuous math on discrete structures (NEW):** Wasserstein-2 and other continuous divergence metrics may behave unpredictably on sparse ASTs. This is applying optimal transport theory to fundamentally discrete, structured data. Gemini flagged this as its biggest scope limitation.
 
@@ -773,20 +773,20 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 > **UPDATED with Gemini GRADE assessments.**
 
-**Tier 1 (Empirically Validated — Gemini GRADE: High/Moderate):**
+**Tier 1 (Empirically Validated: Gemini GRADE: High/Moderate):**
 - ADWIN drift detection: published, tested in production. **Gemini: High.** ✅ IMPLEMENTED
 - Wasserstein-2 for global drift: theoretically optimal. **Gemini: Moderate.** ⚠️ Discrete syntax caveat
 - BOCD (Bayesian changepoint): exact posterior uncertainty. **Gemini: Moderate.** Future candidate
 - A/B testing / shadow deployment: proven methodology. ✅ On roadmap (Phase 3-4)
 - Conformal prediction CIs: standard technique. ✅ IMPLEMENTED
 
-**Tier 2 (Theoretically Sound, Limited Empirical Validation — Gemini GRADE: Moderate/Low):**
+**Tier 2 (Theoretically Sound, Limited Empirical Validation: Gemini GRADE: Moderate/Low):**
 - Bregman projection + quantile shift (zero-label recalibration): **Gemini validated as primary strategy**
 - MAB signal weighting (Thompson Sampling/UCB): **Gemini: Moderate.** Phase 5 candidate
 - Logistic regression refit on pseudo-labels: **Gemini: Low.** Gated by CI bounds only
 - ~~Page-Hinkley test~~: Not specifically recommended by Gemini. ADWIN preferred.
 
-**Tier 3 (Novel, Untested — Gemini GRADE: Very Low):**
+**Tier 3 (Novel, Untested: Gemini GRADE: Very Low):**
 - Dynamic reference generation from current LLMs: **Gemini: Very Low.** No published precedent. Phase 5+ experimental
 - Adversarial calibration: interesting, but unclear if it works or just teaches LLMs to evade
 - Crowdsourced recalibration: not assessed by Gemini
@@ -797,32 +797,32 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 
 ## RESEARCH AREA 7: Integrated System Design & Implementation Roadmap
 
-> **GEMINI STATUS: ✅ VALIDATED — Gemini proposed a 5-phase roadmap that closely mirrors
+> **GEMINI STATUS: ✅ VALIDATED: Gemini proposed a 5-phase roadmap that closely mirrors
 > this one. Updated below to reflect: (a) Gemini's specific algorithm recommendations,
 > (b) what's already implemented in vibe_check.py, (c) revised timelines.**
 
-### 7.1 Phase 1: Baseline + Monitoring (Months 1-2) — ✅ IMPLEMENTED
+### 7.1 Phase 1: Baseline + Monitoring (Months 1-2), ✅ IMPLEMENTED
 
 **Objective:** Build infrastructure to understand the problem.
 
 **Tasks:**
-1. ✅ Implement signal logging to all vibe_check.py runs (JSONL) — `VIBE_CHECK_TELEMETRY_DIR` env var
+1. ✅ Implement signal logging to all vibe_check.py runs (JSONL): `VIBE_CHECK_TELEMETRY_DIR` env var
 2. ⬜ Build dashboards: signal distributions over time (time series plots)
 3. ✅ Implement baseline variance calculation from telemetry data
 4. ✅ Establish calibration versioning (`v2026_q2_gemini`)
-5. ⬜ Curate holdout test set (200-500 manually labeled PRs) — see PROMPT_LABELED_DATASET.md
+5. ⬜ Curate holdout test set (200-500 manually labeled PRs), see PROMPT_LABELED_DATASET.md
 
 **Success Criteria:**
 - ✅ Signal values logged per-evaluation with timestamp, PR metadata, calibration version
 - ⬜ Can visualize whether drift is happening in real-time (needs dashboard)
 - ⬜ Have labeled validation data (see labeled dataset prompt)
 
-### 7.2 Phase 2: Drift Detection (Months 3-4) — ✅ IMPLEMENTED
+### 7.2 Phase 2: Drift Detection (Months 3-4), ✅ IMPLEMENTED
 
 **Objective:** Detect when recalibration is needed.
 
 **Tasks:**
-1. ✅ Implement drift detection — `--drift-status` flag in vibe_check.py
+1. ✅ Implement drift detection: `--drift-status` flag in vibe_check.py
 2. ✅ Set thresholds: Hoeffding-bound per-signal (1.5σ), CI collapse (<0.15 avg width)
 3. ✅ Multi-tiered decision logic: TRIGGER_RECALIBRATION / TRIGGER_ALERT_MANUAL_REVIEW / CONTINUE
 4. ⬜ Run on historical data: what would have been detected? (needs ≥50 evaluations)
@@ -833,7 +833,7 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 - ✅ Implements Gemini-recommended multi-tiered logic
 - ⬜ Validated on real drift scenarios (needs production data)
 
-### 7.3 Phase 3: Unsupervised Recalibration (Months 5-6) — ⬜ NOT YET IMPLEMENTED
+### 7.3 Phase 3: Unsupervised Recalibration (Months 5-6), ⬜ NOT YET IMPLEMENTED
 
 **Objective:** Automatically adapt thresholds. **Gemini algorithm: Bregman projection + quantile shift.**
 
@@ -850,7 +850,7 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 - 5% disagreement cases seem like genuine improvements
 - No obvious failure modes
 
-### 7.4 Phase 4: Canary Rollout + Automated Rollback (Months 7-8) — ⬜ NOT YET IMPLEMENTED
+### 7.4 Phase 4: Canary Rollout + Automated Rollback (Months 7-8), ⬜ NOT YET IMPLEMENTED
 
 **Objective:** Deploy recalibrated thresholds safely. **Gemini addition: F1-based rollback.**
 
@@ -868,13 +868,13 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 - Weak-label model beats unsupervised on holdout set (if labels available)
 - Rollback mechanism activates correctly on injected degradation
 
-### 7.5 Phase 5: Dynamic Signal Weighting + Experimental (Months 9+) — ⬜ FUTURE
+### 7.5 Phase 5: Dynamic Signal Weighting + Experimental (Months 9+), ⬜ FUTURE
 
 **Objective:** Advanced self-healing capabilities.
 
 **Tasks:**
-1. MAB dynamic signal weighting (Thompson Sampling / UCB) — **Gemini: Moderate**
-2. Dynamic Reference Generation (query frontier LLMs for fresh baselines) — **Gemini: Very Low**
+1. MAB dynamic signal weighting (Thompson Sampling / UCB): **Gemini: Moderate**
+2. Dynamic Reference Generation (query frontier LLMs for fresh baselines): **Gemini: Very Low**
 3. Architectural hallucination detection as Signal 11 (Georgia Tech SSLab findings)
 4. Quarterly manual audit: pick 50 random PRs, verify vibe_score correctness
 5. Document calibration history: maintain audit trail
@@ -917,40 +917,40 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 ### Foundational Drift Detection
 - Gama et al. (2014). "Learning from Evolving Data Streams" (comprehensive survey)
 - Ditzler et al. (2015). "Learning in Nonstationary Environments" (practical overview)
-- **Bifet & Gavaldà (2007). "Learning from Time-Changing Data with Adaptive Windowing" (ADWIN paper)** — Gemini GRADE: High
+- **Bifet & Gavaldà (2007). "Learning from Time-Changing Data with Adaptive Windowing" (ADWIN paper)**: Gemini GRADE: High
 - Page (1954). "Continuous Inspection Schemes" (Page-Hinkley test, foundational)
-- **Adams & MacKay (2007). "Bayesian Online Changepoint Detection"** — Gemini GRADE: Moderate
-- [Benchmarking Change Detector Algorithms (ArTS/IEEE)](https://arts.units.it/retrieve/7a52a7b5-351d-43f4-9cca-a77660b4dbd9/futureinternet-15-00169-v2.pdf) — Added via Gemini
+- **Adams & MacKay (2007). "Bayesian Online Changepoint Detection"**: Gemini GRADE: Moderate
+- [Benchmarking Change Detector Algorithms (ArTS/IEEE)](https://arts.units.it/retrieve/7a52a7b5-351d-43f4-9cca-a77660b4dbd9/futureinternet-15-00169-v2.pdf): Added via Gemini
 
 ### Code Stylometry & LLM Detection
-- **[An Empirical Study on Detecting AI-Generated Source Code (ICSE 2025)](https://arxiv.org/abs/2411.04299)** — CCR universal discriminator
-- **[Detection of LLM-Paraphrased Code via Stylometry (2025)](https://arxiv.org/abs/2502.17749)** — Docstring + naming signals
-- **[Automatic Detection of LLM-Generated Code: Claude 3 Case Study (2024)](https://arxiv.org/abs/2409.01382)** — Single-model study
-- **[Stylometry in short samples (arXiv:2507.00838)](https://arxiv.org/abs/2507.00838)** — RLHF/DPO signal inflation. Added via Gemini
-- **LLM-AuthorBench** (32K programs) — Inter-model separation >97%. Referenced via Gemini
+- **[An Empirical Study on Detecting AI-Generated Source Code (ICSE 2025)](https://arxiv.org/abs/2411.04299)**: CCR universal discriminator
+- **[Detection of LLM-Paraphrased Code via Stylometry (2025)](https://arxiv.org/abs/2502.17749)**: Docstring + naming signals
+- **[Automatic Detection of LLM-Generated Code: Claude 3 Case Study (2024)](https://arxiv.org/abs/2409.01382)**: Single-model study
+- **[Stylometry in short samples (arXiv:2507.00838)](https://arxiv.org/abs/2507.00838)**: RLHF/DPO signal inflation. Added via Gemini
+- **LLM-AuthorBench** (32K programs): Inter-model separation >97%. Referenced via Gemini
 - [I Know Which LLM Wrote Your Code (2025)](https://arxiv.org/abs/2506.17323)
 
 ### Self-Healing ML
-- **[Self-Healing ML Pipelines (Preprints.org:202510.2522)](https://www.preprints.org/manuscript/202510.2522)** — Added via Gemini
-- [Self-Healing Machine Learning Framework (Semantic Scholar)](https://www.semanticscholar.org/paper/Self-Healing-Machine-Learning%3A-A-Framework-for-in-Rauba-Seedat/e2670a59f28ea58a9e05391372cbad6c361cc1a9) — Added via Gemini
+- **[Self-Healing ML Pipelines (Preprints.org:202510.2522)](https://www.preprints.org/manuscript/202510.2522)**: Added via Gemini
+- [Self-Healing Machine Learning Framework (Semantic Scholar)](https://www.semanticscholar.org/paper/Self-Healing-Machine-Learning%3A-A-Framework-for-in-Rauba-Seedat/e2670a59f28ea58a9e05391372cbad6c361cc1a9): Added via Gemini
 - [Unsupervised Concept Drift Detection from Deep Learning Representations (arXiv:2406.17813)](https://arxiv.org/abs/2406.17813)
 - [concept-drift library (GitHub)](https://github.com/blablahaha/concept-drift)
 
 ### Semi-Supervised Learning
 - Zhu & Goldberg (2009). "Introduction to Semi-Supervised Learning" (textbook)
 - Grandvalet & Bengio (2004). "Semi-Supervised Learning by Entropy Minimization" (consistency regularization)
-- **[Calibrating Pseudo-Labeling with Class Distribution (ACL 2025)](https://aclanthology.org/2025.emnlp-main.658.pdf)** — Feedback loop risk. Added via Gemini
+- **[Calibrating Pseudo-Labeling with Class Distribution (ACL 2025)](https://aclanthology.org/2025.emnlp-main.658.pdf)**: Feedback loop risk. Added via Gemini
 
 ### ML Ops & Monitoring
 - Sculley et al. (2015). "Hidden Technical Debt in Machine Learning Systems" (monitoring, maintenance)
 - Breck et al. (2017). "The ML Test Score" (testing ML systems)
-- [A Comparison of Approaches for Handling Concept Drifts (IEEE)](https://ieeexplore.org/iel8/6287639/6514899/10947750.pdf) — Added via Gemini
+- [A Comparison of Approaches for Handling Concept Drifts (IEEE)](https://ieeexplore.org/iel8/6287639/6514899/10947750.pdf): Added via Gemini
 
 ### LLM Code Generation Evolution & Security
-- **[Stanford HAI 2025 AI Index — Technical Performance](https://hai.stanford.edu/ai-index/2025-ai-index-report/technical-performance)** — SWE-bench convergence. Gemini GRADE: High
-- **[Vibe Coding: Toward an AI-Native Paradigm (arXiv:2510.17842)](https://arxiv.org/abs/2510.17842)** — Added via Gemini
-- **Georgia Tech SSLab Vibe Security Radar** — 35 CVEs/month from AI code (March 2026). Added via Gemini
-- **[A Self-Improving Architecture for Dynamic Safety in LLMs (arXiv:2511.07645)](https://arxiv.org/abs/2511.07645)** — Added via Gemini
+- **[Stanford HAI 2025 AI Index: Technical Performance](https://hai.stanford.edu/ai-index/2025-ai-index-report/technical-performance)**: SWE-bench convergence. Gemini GRADE: High
+- **[Vibe Coding: Toward an AI-Native Paradigm (arXiv:2510.17842)](https://arxiv.org/abs/2510.17842)**: Added via Gemini
+- **Georgia Tech SSLab Vibe Security Radar**, 35 CVEs/month from AI code (March 2026). Added via Gemini
+- **[A Self-Improving Architecture for Dynamic Safety in LLMs (arXiv:2511.07645)](https://arxiv.org/abs/2511.07645)**: Added via Gemini
 - OpenAI technical reports on GPT-4, o1
 - Anthropic / DeepSeek / Meta research on Claude, other models
 
@@ -1036,10 +1036,10 @@ Scheduled for Phase 5 (Month 9+). Upgrade factor: strong theoretical foundation.
 ## END OF PROMPT
 
 **Token Budget Estimate:** This prompt is designed for 50-100k tokens of analysis. Deep research agents should:
-1. Search for papers on each topic area — **Many now confirmed by Gemini; focus on OPEN items**
-2. Synthesize findings into concrete recommendations — **Architecture validated; focus on Phase 3-5 implementation**
-3. Propose full system architecture with code sketches — **6-component pipeline validated; need Phase 3 code**
-4. Identify knowledge gaps and unknown unknowns — **See "What Remains Open" above**
-5. Produce a prioritized implementation roadmap — **Phases 1-2 done; focus on Phase 3 next**
+1. Search for papers on each topic area: **Many now confirmed by Gemini; focus on OPEN items**
+2. Synthesize findings into concrete recommendations: **Architecture validated; focus on Phase 3-5 implementation**
+3. Propose full system architecture with code sketches: **6-component pipeline validated; need Phase 3 code**
+4. Identify knowledge gaps and unknown unknowns: **See "What Remains Open" above**
+5. Produce a prioritized implementation roadmap: **Phases 1-2 done; focus on Phase 3 next**
 
 **Deliverable:** Research report with sections mirroring the 9 areas above, plus integrated summary and specific recommendations for your codebase. **Priority: deep-dive on discrete syntax problem (Gemini's biggest scope limitation) and Phase 3 Bregman projection implementation details.**

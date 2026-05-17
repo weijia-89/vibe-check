@@ -119,13 +119,13 @@ PHASE 5: OUTPUT PACKAGE
 ═══════════════════════════════════════════
 
 Produce these files:
-1. labeled_prs.tsv — all discovered labeled PRs
-2. signals.tsv — signal scores for all analyzed PRs
-3. expanded_dataset.tsv — full dataset including pseudo-labels
-4. descriptive_stats.tsv — per-signal statistics by class
-5. discrimination.tsv — ROC AUC and optimal thresholds
-6. bayesian_ci.tsv — credible intervals
-7. threshold_comparison.tsv — current vs optimal thresholds
+1. labeled_prs.tsv, all discovered labeled PRs
+2. signals.tsv, signal scores for all analyzed PRs
+3. expanded_dataset.tsv, full dataset including pseudo-labels
+4. descriptive_stats.tsv, per-signal statistics by class
+5. discrimination.tsv: ROC AUC and optimal thresholds
+6. bayesian_ci.tsv, credible intervals
+7. threshold_comparison.tsv, current vs optimal thresholds
 8. dataset_summary.json:
    {
      "total_prs_analyzed": N,

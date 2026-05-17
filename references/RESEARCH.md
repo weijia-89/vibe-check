@@ -30,15 +30,15 @@
 
 ## Source Quality Assessment
 
-### Tier 1 — High quality
+### Tier 1: High quality
 - **arXiv:2411.04299** (ICSE 2025): Large empirical study, peer-reviewed at top venue. N=sufficient. Replication: methodology published. COI: Academic, no industry funding disclosed.
 - **arXiv:2502.17749** (2025): Code stylometry focus. Peer-reviewed. Comprehensive feature analysis. Multiple model comparison.
 - **Stanford HAI 2025 AI Index** (via Gemini): Institutional report. SWE-bench convergence data (4.4% → 71.7%).
 - **Adams & MacKay 2007** (BOCD): Seminal foundational work. Universally cited in changepoint detection.
 - **Bifet & Gavaldà** (ADWIN): Foundational. Massive body of literature and RCTs in streaming ML.
 
-### Tier 2 — Moderate quality  
-- **arXiv:2409.01382** (2024): Claude 3 Haiku only — limited generalization. Methodology sound but single-model. Gemini cross-validated against CodeSearchNet dataset.
+### Tier 2: Moderate quality  
+- **arXiv:2409.01382** (2024): Claude 3 Haiku only, limited generalization. Methodology sound but single-model. Gemini cross-validated against CodeSearchNet dataset.
 - **arXiv:2512.05239** (2025): Survey methodology. Good breadth but relies on taxonomy from limited sample.
 - **ICML 2024 Binoculars**: Strong methodology but requires ML models (not applicable to deterministic approach).
 - **Georgia Tech SSLab Vibe Security Radar** (via Gemini): Academic lab, production evidence. 35 CVEs/month finding is single snapshot. Architectural hallucination finding is high-signal.
@@ -46,7 +46,7 @@
 - **arXiv:2507.00838** (via Gemini): Stylometry in short samples. RLHF/DPO signal inflation mechanism.
 - **DriftLens framework** (via Gemini): Fréchet Inception Distance for drift. Wasserstein-2 validation.
 
-### Tier 3 — Low quality / grey lit
+### Tier 3: Low quality / grey lit
 - Code turnover metrics (larridin.com): Blog post, no peer review. Interesting signal but unvalidated.
 - AI usage measurement framework (GitHub): Open source, community-maintained. Anecdotal evidence base.
 - **Gemini-proposed Dynamic Reference Generation**: Novel concept (query frontier LLMs for fresh baselines). No published precedent. Theoretically sound but high implementation risk.
@@ -64,7 +64,7 @@
 
 ### Where counterarguments succeed
 - Points 1 and 6 are the strongest. The tool has a shelf life AND the self-healing approach carries real risk.
-- Point 7 is foundational — we're applying continuous math to discrete structures.
+- Point 7 is foundational, we're applying continuous math to discrete structures.
 - Gemini's own adversarial review argues manual periodic recalibration may be safer than automated miscalibration.
 
 ### Mitigations
@@ -101,8 +101,8 @@ ELSE:
 
 ### Recalibration strategies
 - **Zero-label** (no ground truth): Bregman projection + quantile shift. Maps drifted distribution to historical KDE shape, adjusting percentile cutoffs to maintain original False Positive Rate.
-- **Weak-label** (top 5% most confident predictions as pseudo-labels): Logistic regression refit over 10 signals. Gated by conformal prediction CI — only narrow-bound predictions admitted.
-- **Dynamic Reference Generation** (experimental): Periodically query frontier LLMs (Claude, GPT) on HumanEval/LeetCode tasks. Extract fresh signal baselines from pure-LLM output. GRADE: Very Low — no precedent.
+- **Weak-label** (top 5% most confident predictions as pseudo-labels): Logistic regression refit over 10 signals. Gated by conformal prediction CI, only narrow-bound predictions admitted.
+- **Dynamic Reference Generation** (experimental): Periodically query frontier LLMs (Claude, GPT) on HumanEval/LeetCode tasks. Extract fresh signal baselines from pure-LLM output. GRADE: Very Low, no precedent.
 
 ### Implementation roadmap
 - Phase 1 (Months 1-2): JSONL telemetry + baseline variance calculation
@@ -124,20 +124,20 @@ ELSE:
 
 ## Key finding from Gemini: Georgia Tech SSLab Vibe Security Radar
 
-Modern agentic LLMs don't just produce localized typos — they introduce **baked-in design flaws born of hallucinated architectural assumptions**:
+Modern agentic LLMs don't just produce localized typos, they introduce **baked-in design flaws born of hallucinated architectural assumptions**:
 - Deploying server-side infra lacking basic authentication
 - Committing command injection vulnerabilities
 - 35 new CVEs in a single month (March 2026) directly attributable to AI generation
 
 This validates upgrading hallucinated API detection from a supplementary signal (weight 0.06) to a potentially critical security signal, especially once integrated with package manifests via MCP.
 
-Additionally: as developers strip explicit AI metadata (co-author tags, bot emails), detection must rely entirely on deep behavioral signatures. The Georgia Tech finding that LLMs lack human entropy — producing uniform patterns across thousands of repos — confirms the enduring viability of stylometric detection even as surface features converge.
+Additionally: as developers strip explicit AI metadata (co-author tags, bot emails), detection must rely entirely on deep behavioral signatures. The Georgia Tech finding that LLMs lack human entropy, producing uniform patterns across thousands of repos, confirms the enduring viability of stylometric detection even as surface features converge.
 
 ## Signals NOT implemented (and why)
 
 | Signal | Why excluded |
 |--------|-------------|
-| Perplexity/entropy (DetectGPT, Binoculars) | Requires trained LLM — not deterministic |
+| Perplexity/entropy (DetectGPT, Binoculars) | Requires trained LLM, not deterministic |
 | CodeBERT embeddings | Requires fine-tuned model |
 | Token frequency distribution | Requires language model tokenizer |
 | Code clone detection | Requires large corpus comparison |
@@ -167,7 +167,7 @@ Additionally: as developers strip explicit AI metadata (co-author tags, bot emai
 - [I Know Which LLM Wrote Your Code (2025)](https://arxiv.org/abs/2506.17323)
 
 ### Added via Gemini Deep Research synthesis
-- [Stanford HAI 2025 AI Index — Technical Performance](https://hai.stanford.edu/ai-index/2025-ai-index-report/technical-performance)
+- [Stanford HAI 2025 AI Index: Technical Performance](https://hai.stanford.edu/ai-index/2025-ai-index-report/technical-performance)
 - [Vibe Coding: Toward an AI-Native Paradigm (arXiv:2510.17842)](https://arxiv.org/abs/2510.17842)
 - [Stylometry recognizes human and LLM-generated texts in short samples (arXiv:2507.00838)](https://arxiv.org/abs/2507.00838)
 - [Self-Healing ML Pipelines: Automating Drift Detection (Preprints.org:202510.2522)](https://www.preprints.org/manuscript/202510.2522)

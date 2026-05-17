@@ -1,8 +1,8 @@
-# Hallucinated API Detection via MCP — Feasibility Analysis
+# Hallucinated API Detection via MCP: Feasibility Analysis
 
 ## Current limitation
 
-vibe_check.py has ~15 hardcoded regex patterns for known non-existent APIs (e.g., `Promise.allResolved`, `os.path.mkdirs`). This catches maybe 5% of actual hallucinations. The real problem is that LLMs invent plausible-sounding methods that are specific to the libraries YOUR codebase uses — and those can't be hardcoded.
+vibe_check.py has ~15 hardcoded regex patterns for known non-existent APIs (e.g., `Promise.allResolved`, `os.path.mkdirs`). This catches maybe 5% of actual hallucinations. The real problem is that LLMs invent plausible-sounding methods that are specific to the libraries YOUR codebase uses, and those can't be hardcoded.
 
 ## What "real" hallucinated API detection looks like
 
@@ -33,7 +33,7 @@ Already partially implemented in vibe_check.py. Needs enhancement:
 - Parse `library.method()` calls → extract (library, method) pairs
 - Handle aliased imports: `import pd from 'pandas'` → `pd.X` maps to `pandas.X`
 
-This is deterministic — regex + import resolution, no ML needed.
+This is deterministic, regex + import resolution, no ML needed.
 
 ### Step 3: Validate methods against library type stubs
 
@@ -44,23 +44,23 @@ This is the key question: **where do you get the list of valid methods?**
 - With repo MCP access: read `node_modules/@types/{library}/index.d.ts`
 - Or fetch from DefinitelyTyped GitHub repo for the pinned version
 - Parse exported function/class/method names with regex
-- **Feasibility: HIGH** — type stubs are structured, parseable, version-pinned
+- **Feasibility: HIGH**, type stubs are structured, parseable, version-pinned
 
 **Option B: Python type stubs + introspection**
 - `typeshed` repo has stubs for stdlib + popular packages
 - For installed packages: `pip show {package}` → location, then scan `.pyi` files
 - Or use `inspect.getmembers()` programmatically
-- **Feasibility: MEDIUM** — requires either runtime access or stub repo parsing
+- **Feasibility: MEDIUM**, requires either runtime access or stub repo parsing
 
 **Option C: Go doc**
 - `go doc {package}` lists all exported symbols
 - Or parse `pkg.go.dev` API for the pinned version
-- **Feasibility: MEDIUM** — structured but requires either local Go or web API
+- **Feasibility: MEDIUM**, structured but requires either local Go or web API
 
 **Option D: Java/Kotlin (hardest)**
 - Parse JAR manifests or use `javap` decompiler
 - Or query Maven Central API for class listings
-- **Feasibility: LOW** — complex class hierarchies, reflection-heavy ecosystem
+- **Feasibility: LOW**, complex class hierarchies, reflection-heavy ecosystem
 
 ### Step 4: Cross-reference and flag
 
@@ -103,6 +103,6 @@ Total estimate: ~2-3 days of focused work for JS/TS, another 2-3 for Python. Go/
 
 ## Is it worth it?
 
-**Yes, but prioritize JS/TS first.** The TypeScript type system makes this almost trivially solvable — `.d.ts` files are literally a machine-readable manifest of every valid method. Python is next easiest via typeshed. Go is doable. Java is probably not worth the effort given reflection and dynamic proxies.
+**Yes, but prioritize JS/TS first.** The TypeScript type system makes this almost trivially solvable: `.d.ts` files are literally a machine-readable manifest of every valid method. Python is next easiest via typeshed. Go is doable. Java is probably not worth the effort given reflection and dynamic proxies.
 
-The hallucinated API signal would jump from confidence 0.4 to ~0.8 with this enhancement, and it's one of the most **specific** signals (low false positive rate when done right — a method either exists or it doesn't).
+The hallucinated API signal would jump from confidence 0.4 to ~0.8 with this enhancement, and it's one of the most **specific** signals (low false positive rate when done right, a method either exists or it doesn't).

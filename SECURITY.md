@@ -75,4 +75,4 @@ Owner: repo maintainers. Last reviewed: 2026-05-15.
 - No credentials, tokens, or private keys in the working tree or git history (verified by scrub on 2026-05-15).
 - No external webhooks, private IPs, or telemetry endpoints baked into code.
 - GitHub host and default-repo configuration moved to env vars (`VIBE_DETECT_GH_HOST`, `VIBE_DETECT_DEFAULT_REPO`); no organisation-specific defaults shipped.
-- `scripts/vibe_detect/vibe_detect_results.json` is in `.gitignore` — never commit it; PR identifiers can be sensitive depending on context.
+- `scripts/vibe_detect/vibe_detect_results.json` is in `.gitignore`, never commit it; PR identifiers can be sensitive depending on context.

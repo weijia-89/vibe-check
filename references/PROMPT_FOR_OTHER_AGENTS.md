@@ -12,11 +12,11 @@ You are continuing research on deterministic detection of AI-generated ("vibe co
 
 | Signal | Weight | Basis | Validate |
 |--------|--------|-------|----------|
-| Comment-to-code ratio | 0.18 | arXiv:2411.04299 — "sole universal discriminator" | Verify claim holds across models post-2025 |
-| Docstring consistency | 0.15 | arXiv:2502.17749 — 80-100% LLM vs 20-40% human | Check if newer models learned to skip docstrings |
-| Naming uniformity | 0.13 | arXiv:2502.17749 — 95%+ LLM consistency | Verify with Go/Rust codebases (enforced style) |
-| Error handling patterns | 0.12 | arXiv:2512.05239 — shallow try-catch | Replicate on current model outputs |
-| Declarative bias | 0.10 | arXiv:2409.01382 — Claude 3 only | Test with GPT-4, Gemini, newer Claude |
+| Comment-to-code ratio | 0.18 | arXiv:2411.04299, "sole universal discriminator" | Verify claim holds across models post-2025 |
+| Docstring consistency | 0.15 | arXiv:2502.17749, 80-100% LLM vs 20-40% human | Check if newer models learned to skip docstrings |
+| Naming uniformity | 0.13 | arXiv:2502.17749, 95%+ LLM consistency | Verify with Go/Rust codebases (enforced style) |
+| Error handling patterns | 0.12 | arXiv:2512.05239, shallow try-catch | Replicate on current model outputs |
+| Declarative bias | 0.10 | arXiv:2409.01382: Claude 3 only | Test with GPT-4, Gemini, newer Claude |
 | Function length CV | 0.08 | arXiv:2409.01382 | Low sample size concern |
 | Comment phrasing | 0.08 | arXiv:2502.17749 | Cultural/team bias risk |
 | Hallucinated APIs | 0.06 | Augment Code blog, practitioner reports | No peer-reviewed source |
@@ -30,7 +30,7 @@ You are continuing research on deterministic detection of AI-generated ("vibe co
 4. Threshold values are approximate, derived from paper medians
 5. No validation against "vibe coded" specifically (proxy: AI-generated)
 6. Cultural bias in human baselines (Western open-source projects)
-7. Signal decay as models improve — no longitudinal tracking
+7. Signal decay as models improve, no longitudinal tracking
 
 ### Adversarial weaknesses identified
 - Well-documented codebases trigger false positives
@@ -51,7 +51,7 @@ You are continuing research on deterministic detection of AI-generated ("vibe co
 ## Epistemic rules
 - Apply GRADE, Cochrane RoB 2, ROBINS-I standards per source
 - Separate peer-reviewed from grey literature
-- Flag replication-crisis concerns (this touches CS/software engineering — moderate risk)
+- Flag replication-crisis concerns (this touches CS/software engineering, moderate risk)
 - Apply Dunning-Kruger guard: what are you NOT qualified to assess here?
 - Be dialectical: argue for AND against each finding
 

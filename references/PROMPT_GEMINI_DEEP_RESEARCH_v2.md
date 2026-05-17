@@ -1,4 +1,4 @@
-# Gemini Deep Research v2 — Open Questions in Heuristic AI Code Detection
+# Gemini Deep Research v2: Open Questions in Heuristic AI Code Detection
 
 **Status:** Ready to submit
 **Prerequisites:** Gemini Deep Research v1 completed (April 2026, "Autonomous Recalibration in Heuristic Code Classifiers"). This prompt covers the 6 research areas that v1 either flagged as unresolved, didn't address, or that have emerged since.
@@ -14,7 +14,7 @@ META
 
 ROLE: Research scientist investigating open problems in deterministic AI-generated code detection.
 
-TOKEN BUDGET: UNLIMITED. Be fully exhaustive. Do not summarize prematurely, do not truncate literature reviews, do not skip negative results or methodological limitations. Cover every relevant paper, every conflicting finding, every edge case. Length is not a constraint — thoroughness is.
+TOKEN BUDGET: UNLIMITED. Be fully exhaustive. Do not summarize prematurely, do not truncate literature reviews, do not skip negative results or methodological limitations. Cover every relevant paper, every conflicting finding, every edge case. Length is not a constraint, thoroughness is.
 
 PRIOR WORK: You (Gemini) produced a 20-page synthesis in April 2026 titled "Autonomous Recalibration in Heuristic Code Classifiers: Mitigating Concept Drift in the Era of Vibe Coding" covering:
 - ADWIN drift detection (GRADE: High) ✅
@@ -32,11 +32,11 @@ This prompt covers what v1 LEFT OPEN, FLAGGED AS LIMITATIONS, or DID NOT ADDRESS
 
 DOWNSTREAM CONSUMER: Claude Opus 4.6 (200K context window). Your output will be ingested directly by an LLM. This means:
 - Use consistent, parseable structure throughout (labeled sections, tables, YAML blocks)
-- Prefer verbatim quotes from papers over paraphrases — let the downstream model interpret
+- Prefer verbatim quotes from papers over paraphrases, let the downstream model interpret
 - Separate FINDINGS (what papers say) from SYNTHESIS (your interpretation) from SPECULATION (your extrapolation beyond evidence)
 - For every claim, provide: source, year, sample size, methodology, reported effect size, and your GRADE assessment
-- Include null results and failed replications — they constrain the hypothesis space
-- When two papers conflict, report both with full methodology comparison — do not pick a winner
+- Include null results and failed replications, they constrain the hypothesis space
+- When two papers conflict, report both with full methodology comparison, do not pick a winner
 - End each research area with a structured summary block (schema provided below)
 
 PROJECT CONTEXT:
@@ -45,15 +45,15 @@ We operate vibe_check.py, a deterministic (stdlib-only Python, no ML) PR diff an
 
 | # | Signal | Weight | Type | Current Threshold | Vulnerability Status |
 |---|--------|--------|------|-------------------|---------------------|
-| 1 | Cyclomatic Complexity Ratio (CCR) | 0.18 | Continuous | varies | ROBUST — sole universal discriminator |
-| 2 | Docstring Consistency | 0.15 | Continuous | 0.65 | FRAGILE — RLHF/DPO inflates beyond human baseline |
-| 3 | Naming Uniformity | 0.13 | Continuous | 0.92 | FRAGILE — RLHF/DPO inflates beyond human baseline |
+| 1 | Cyclomatic Complexity Ratio (CCR) | 0.18 | Continuous | varies | ROBUST, sole universal discriminator |
+| 2 | Docstring Consistency | 0.15 | Continuous | 0.65 | FRAGILE: RLHF/DPO inflates beyond human baseline |
+| 3 | Naming Uniformity | 0.13 | Continuous | 0.92 | FRAGILE: RLHF/DPO inflates beyond human baseline |
 | 4 | Error Handling Depth | 0.12 | Continuous | 0.45 | MODERATE |
 | 5 | Declarative Bias (decl/control ratio) | 0.10 | Continuous | 1.8 | MODERATE |
 | 6 | Function Length CV | 0.08 | Continuous | 0.4 | MODERATE |
-| 7 | Comment Phrasing (boilerplate %) | 0.08 | Continuous | 0.35 | MODERATE — hypothesized r≈0.6 correlation with Signal 1 |
+| 7 | Comment Phrasing (boilerplate %) | 0.08 | Continuous | 0.35 | MODERATE, hypothesized r≈0.6 correlation with Signal 1 |
 | 8 | Hallucinated APIs | 0.06 | Binary | presence | HIGH PRECISION, LOW RECALL |
-| 9 | Edge Case Nesting Depth | 0.05 | Continuous | 1.5 | MODERATE — hypothesized r≈0.5 correlation with Signal 4 |
+| 9 | Edge Case Nesting Depth | 0.05 | Continuous | 1.5 | MODERATE, hypothesized r≈0.5 correlation with Signal 4 |
 | 10 | Commit Metadata Markers | 0.05 | Pattern | pattern match | TRIVIALLY GAMEABLE |
 
 The tool outputs a 0-1 "vibe score" (weighted sum of normalized signal scores) with conformal prediction confidence intervals.
@@ -63,7 +63,7 @@ RESEARCH AREA 1: SIGNAL CORRELATION & MULTICOLLINEARITY
 ═══════════════════════════════════════════════════════════
 
 STATUS: Never researched. Prompt existed but was never submitted.
-IMPORTANCE: CRITICAL — if correlated signals double-count information, the weighted sum is miscalibrated and confidence intervals are too narrow.
+IMPORTANCE: CRITICAL, if correlated signals double-count information, the weighted sum is miscalibrated and confidence intervals are too narrow.
 
 HYPOTHESIZED CORRELATION CLUSTERS:
 - Cluster A (documentation signals): CCR ↔ Comment Phrasing ↔ Docstring Consistency (Signals 1, 7, 2). If r>0.5 between any pair, these three signals with combined weight 0.41 may be effectively counting the same thing twice.
@@ -85,22 +85,22 @@ RESEARCH QUESTIONS:
 
 1.3. WEIGHT ADJUSTMENT METHODS
 - How should weights be adjusted for correlated features? Compare at least 4 approaches:
-  a) Principal Component Analysis (PCA) — rotate to orthogonal components
-  b) VIF-based deflation — divide weight by VIF
-  c) Elastic Net regularization — L1+L2 penalty discovers sparsity
-  d) Information-theoretic — mutual information to measure unique vs. shared information
+  a) Principal Component Analysis (PCA), rotate to orthogonal components
+  b) VIF-based deflation, divide weight by VIF
+  c) Elastic Net regularization: L1+L2 penalty discovers sparsity
+  d) Information-theoretic, mutual information to measure unique vs. shared information
 - For each: mathematical formulation, assumptions, limitations, published applications to similar problems.
-- Which is most appropriate for a 10-signal deterministic ensemble with no training data? (We can't retrain — we need a principled adjustment to fixed weights.)
+- Which is most appropriate for a 10-signal deterministic ensemble with no training data? (We can't retrain, we need a principled adjustment to fixed weights.)
 
 1.4. INTERACTION EFFECTS & NON-LINEARITY
-- Are there known non-linear relationships between code features? (e.g., does high CCR + high docstring consistency together indicate AI MORE than either alone — multiplicative effect?)
+- Are there known non-linear relationships between code features? (e.g., does high CCR + high docstring consistency together indicate AI MORE than either alone, multiplicative effect?)
 - Has anyone used Random Forests, SHAP values, or partial dependence plots to discover interaction effects among code stylometry features?
 - Is our additive weighted sum fundamentally the wrong model? When would a non-linear aggregator (e.g., log-odds, product of experts) be more appropriate?
 
 1.5. LATENT FACTOR ANALYSIS
 - If we factor-analyze our 10 signals, how many independent latent factors would we expect?
-- Published factor analyses of code style features — what latent structure emerges? (e.g., "documentation quality" factor, "structural uniformity" factor, "defensive coding" factor)
-- What is the "effective dimensionality" — if our 10 signals reduce to 4 latent factors, we're really using a 4-signal detector with 10 noisy measurements.
+- Published factor analyses of code style features, what latent structure emerges? (e.g., "documentation quality" factor, "structural uniformity" factor, "defensive coding" factor)
+- What is the "effective dimensionality", if our 10 signals reduce to 4 latent factors, we're really using a 4-signal detector with 10 noisy measurements.
 
 SUMMARY BLOCK (fill this out):
 ```yaml
@@ -122,17 +122,17 @@ RESEARCH AREA 2: THE DISCRETE SYNTAX PROBLEM
 ═══════════════════════════════════════════════════════════
 
 STATUS: Flagged by Gemini v1 as "biggest scope limitation" but NOT researched.
-IMPORTANCE: CRITICAL — this is the theoretical foundation of our entire drift detection system. If Wasserstein-2 behaves unpredictably on discrete code distributions, our drift detector may produce false triggers or miss real drift.
+IMPORTANCE: CRITICAL, this is the theoretical foundation of our entire drift detection system. If Wasserstein-2 behaves unpredictably on discrete code distributions, our drift detector may produce false triggers or miss real drift.
 
 THE PROBLEM:
 Our drift detection uses Wasserstein-2 distance to measure distributional shift between baseline and recent signal values. Wasserstein is a continuous optimal transport metric designed for continuous probability distributions. But code is:
 - DISCRETE: tokens, AST nodes, and syntax elements are categorical, not continuous
 - SPARSE: most possible code structures never appear in any given codebase
-- STRUCTURED: code has grammar — not all token sequences are valid programs
+- STRUCTURED: code has grammar, not all token sequences are valid programs
 - HIGH-DIMENSIONAL: even a small function spans dozens of AST node types
 - CONTEXT-DEPENDENT: the same syntax pattern means different things in different languages
 
-When we compute Wasserstein distance on signal values (which ARE continuous — e.g., CCR=0.42), we're measuring continuous-valued statistics derived from discrete structures. This may be fine — or it may introduce systematic artifacts.
+When we compute Wasserstein distance on signal values (which ARE continuous, e.g., CCR=0.42), we're measuring continuous-valued statistics derived from discrete structures. This may be fine, or it may introduce systematic artifacts.
 
 RESEARCH QUESTIONS:
 
@@ -152,7 +152,7 @@ RESEARCH QUESTIONS:
 - If we bin our continuous signals into discrete bins (e.g., CCR in [0, 0.1, 0.2, ...]), does the drift detection behave differently?
 - How sensitive is Wasserstein distance to bin width? (Resolution-dependence)
 - Is there a principled way to choose bin width for code features?
-- Kolmogorov-Smirnov test (which we considered as alternative) — does it handle the discrete-origin problem better or worse?
+- Kolmogorov-Smirnov test (which we considered as alternative), does it handle the discrete-origin problem better or worse?
 
 2.4. EMPIRICAL EVIDENCE FROM CODE / NLP DOMAIN
 - Has anyone published drift detection results on code feature distributions?
@@ -189,7 +189,7 @@ RESEARCH AREA 3: ADVERSARIAL ROBUSTNESS OF HEURISTIC DETECTORS
 ═══════════════════════════════════════════════════════════
 
 STATUS: Gemini v1 mentioned adversarial calibration in passing but did not research robustness.
-IMPORTANCE: HIGH — determines the tool's shelf life. If a simple prompt like "write code that looks human-written" defeats all 10 signals, the tool is dead on arrival.
+IMPORTANCE: HIGH, determines the tool's shelf life. If a simple prompt like "write code that looks human-written" defeats all 10 signals, the tool is dead on arrival.
 
 THE THREAT MODEL:
 - PASSIVE ADVERSARY: Developer uses Copilot normally, doesn't try to hide it. Our current target.
@@ -203,19 +203,19 @@ RESEARCH QUESTIONS:
 - Has anyone studied what happens when LLMs are prompted to write "human-like" code?
 - Specifically: does adversarial prompting defeat individual stylometric signals? Which ones are most robust, which are most fragile?
 - Search: "adversarial" + "code generation", "evading" + "AI detection" + "code", "human-like" + "code generation", "detector evasion" + "source code"
-- Related: adversarial attacks on text AI detectors (DetectGPT, GPTZero, etc.) — do their findings transfer to code?
+- Related: adversarial attacks on text AI detectors (DetectGPT, GPTZero, etc.), do their findings transfer to code?
 
 3.2. SIGNAL-BY-SIGNAL ROBUSTNESS ANALYSIS
 For each of our 10 signals, what does the literature suggest about adversarial robustness?
-- Signal 1 (CCR): Can an LLM reduce cyclomatic complexity on command? (Probably yes — it can generate simpler logic)
-- Signal 2 (Docstrings): Can an LLM intentionally OMIT docstrings? (Trivially yes — "don't add docstrings")
-- Signal 3 (Naming): Can an LLM use inconsistent naming? (Probably — "use a mix of camelCase and snake_case")
-- Signal 4 (Error handling): Can an LLM add deep error handling? (Probably — "add comprehensive error handling")
-- Signal 5 (Declarative bias): Can an LLM shift toward imperative style? (Yes — "write imperative code")
-- Signal 6 (Function length CV): Can an LLM vary function lengths? (Probably — "make functions different sizes")
-- Signal 7 (Comment phrasing): Can an LLM use non-boilerplate comments? (Less clear — requires understanding what "natural" comments look like)
-- Signal 8 (Hallucinated APIs): Can an LLM avoid hallucinating APIs? (Partially — tool-use models and RAG reduce this, but don't eliminate it)
-- Signal 9 (Edge cases): Can an LLM add deep edge case handling on command? (Probably — "add thorough edge case handling")
+- Signal 1 (CCR): Can an LLM reduce cyclomatic complexity on command? (Probably yes, it can generate simpler logic)
+- Signal 2 (Docstrings): Can an LLM intentionally OMIT docstrings? (Trivially yes, "don't add docstrings")
+- Signal 3 (Naming): Can an LLM use inconsistent naming? (Probably, "use a mix of camelCase and snake_case")
+- Signal 4 (Error handling): Can an LLM add deep error handling? (Probably, "add comprehensive error handling")
+- Signal 5 (Declarative bias): Can an LLM shift toward imperative style? (Yes, "write imperative code")
+- Signal 6 (Function length CV): Can an LLM vary function lengths? (Probably, "make functions different sizes")
+- Signal 7 (Comment phrasing): Can an LLM use non-boilerplate comments? (Less clear, requires understanding what "natural" comments look like)
+- Signal 8 (Hallucinated APIs): Can an LLM avoid hallucinating APIs? (Partially, tool-use models and RAG reduce this, but don't eliminate it)
+- Signal 9 (Edge cases): Can an LLM add deep edge case handling on command? (Probably, "add thorough edge case handling")
 - Signal 10 (Commit metadata): Can adversary avoid Co-authored-by tags? (Trivially yes)
 
 Which signals are "prompt-resistant" (hard to defeat even with adversarial prompting) vs. "prompt-fragile" (trivially defeated)?
@@ -224,13 +224,13 @@ Which signals are "prompt-resistant" (hard to defeat even with adversarial promp
 - Even if individual signals are fragile, is the 10-signal ensemble robust? (The attacker must defeat ALL signals simultaneously)
 - Game-theoretic analysis: what is the minimum effort to reduce vibe_score below threshold?
 - Is there a "waterbed effect" where defeating some signals inadvertently raises others? (e.g., generating "natural" comments that are longer may increase CCR)
-- Published work on ensemble robustness in adversarial ML — does having diverse weak classifiers provide robustness?
+- Published work on ensemble robustness in adversarial ML, does having diverse weak classifiers provide robustness?
 
 3.4. ANTI-ADVERSARIAL COUNTERMEASURES
 - What countermeasures exist for adversarial evasion of code detectors?
 - Temporal consistency: checking whether an author's style changed suddenly (comparing to their historical baseline)
 - Cross-PR consistency: does the same author have different "voices" across PRs?
-- Difficulty-adjusted expectations: a complex algorithm SHOULD have higher CCR — not having it is suspicious
+- Difficulty-adjusted expectations: a complex algorithm SHOULD have higher CCR, not having it is suspicious
 - Are there published defenses from the text AI detection literature that transfer to code?
 
 3.5. PRACTICAL SHELF LIFE ESTIMATION
@@ -243,7 +243,7 @@ SUMMARY BLOCK:
 area_3_summary:
   most_robust_signals: [list of signal IDs]
   most_fragile_signals: [list of signal IDs]
-  prompt_resistant_signals: [list — hard to defeat even with explicit adversarial prompting]
+  prompt_resistant_signals: [list, hard to defeat even with explicit adversarial prompting]
   ensemble_robustness: HIGH | MEDIUM | LOW
   waterbed_effect_exists: true | false | unknown
   estimated_shelf_life_months: N (range)
@@ -258,7 +258,7 @@ RESEARCH AREA 4: SEMI-SUPERVISED LEARNING ON CODE STYLOMETRY
 ═══════════════════════════════════════════════════════════
 
 STATUS: Gemini v1 said pseudo-labeling is high-risk (ACL 2025) but did NOT research what methods DO work for code with limited labels.
-IMPORTANCE: HIGH — we need labeled data for calibration, but getting ground truth is expensive. If there's an SSL method that works on code features with <100 labels, that changes our roadmap.
+IMPORTANCE: HIGH, we need labeled data for calibration, but getting ground truth is expensive. If there's an SSL method that works on code features with <100 labels, that changes our roadmap.
 
 RESEARCH QUESTIONS:
 
@@ -269,12 +269,12 @@ RESEARCH QUESTIONS:
 
 4.2. SSL METHOD COMPARISON FOR OUR USE CASE
 - Compare at least 6 SSL methods for applicability to our 10-signal continuous feature space:
-  a) Self-training (iterative pseudo-labeling) — we know this is risky. HOW risky? At what label noise rate does it diverge?
-  b) Co-training (two views of same data) — could we split signals into "documentation view" and "structural view"?
-  c) Label propagation (graph-based) — build a similarity graph of PRs in signal space, propagate labels. Suitable for continuous features?
-  d) Consistency regularization (FixMatch, MixMatch) — perturbation-invariance. What perturbations make sense for code features?
-  e) Contrastive learning — learn a representation where similar PRs cluster. Then k-NN classification.
-  f) Active learning — not SSL strictly, but: which PRs should we ask a human to label for maximum information gain?
+  a) Self-training (iterative pseudo-labeling), we know this is risky. HOW risky? At what label noise rate does it diverge?
+  b) Co-training (two views of same data), could we split signals into "documentation view" and "structural view"?
+  c) Label propagation (graph-based), build a similarity graph of PRs in signal space, propagate labels. Suitable for continuous features?
+  d) Consistency regularization (FixMatch, MixMatch), perturbation-invariance. What perturbations make sense for code features?
+  e) Contrastive learning, learn a representation where similar PRs cluster. Then k-NN classification.
+  f) Active learning, not SSL strictly, but: which PRs should we ask a human to label for maximum information gain?
 - For each: minimum labels needed, assumptions about data distribution, computational cost, failure modes.
 
 4.3. MINIMUM LABEL REQUIREMENTS
@@ -287,13 +287,13 @@ RESEARCH QUESTIONS:
 - Gemini v1 flagged pseudo-labeling divergence risk. Can you formalize this?
 - Under what conditions does self-training converge vs. diverge? (Mathematical stability analysis)
 - Is there a maximum safe pseudo-label confidence threshold? (We currently gate at top 5% by CI)
-- Published stability analyses for self-training — Amini et al., Zou et al., Arazo et al.?
+- Published stability analyses for self-training: Amini et al., Zou et al., Arazo et al.?
 
 4.5. ALTERNATIVE TO LABELS: ANOMALY DETECTION
 - Can we reframe AI code detection as anomaly detection against a "human code" baseline?
 - Methods: One-Class SVM, Isolation Forest, autoencoder on signal distributions, Local Outlier Factor
 - Advantage: requires only human-code examples (no AI labels needed)
-- Disadvantage: assumes human code is the "normal" class — but which humans?
+- Disadvantage: assumes human code is the "normal" class, but which humans?
 - Has anyone applied anomaly detection to code stylometry?
 
 SUMMARY BLOCK:
@@ -315,7 +315,7 @@ RESEARCH AREA 5: MEASURING DEVELOPER UNDERSTANDING OF CODE
 ═══════════════════════════════════════════════════════════
 
 STATUS: Design document exists with 6 proxy signals. No deep research conducted.
-IMPORTANCE: HIGH — detecting "AI-generated" is a proxy for the actual risk: "code submitted without understanding." A direct understanding measure would be more valuable.
+IMPORTANCE: HIGH, detecting "AI-generated" is a proxy for the actual risk: "code submitted without understanding." A direct understanding measure would be more valuable.
 
 THE INSIGHT:
 AI probability × (1 - Understanding) = Risk
@@ -323,12 +323,12 @@ AI probability × (1 - Understanding) = Risk
 A developer who uses Copilot but thoroughly understands and reviews the output is LOW RISK. A developer who copy-pastes AI output without reading it is HIGH RISK. Our tool currently measures the first factor. Can we measure the second?
 
 PROPOSED PROXY SIGNALS FOR "UNDERSTANDING":
-A. PR description quality — does the author explain WHY, not just WHAT?
-B. Review conversation depth — does the author engage substantively with reviewers?
-C. Commit iteration pattern — incremental development vs. single dump?
-D. Ticket alignment — does the code actually solve what was asked?
-E. Post-merge behavior — does the author fix bugs in their own code promptly?
-F. Codebase familiarity — does the author show knowledge of adjacent code?
+A. PR description quality, does the author explain WHY, not just WHAT?
+B. Review conversation depth, does the author engage substantively with reviewers?
+C. Commit iteration pattern, incremental development vs. single dump?
+D. Ticket alignment, does the code actually solve what was asked?
+E. Post-merge behavior, does the author fix bugs in their own code promptly?
+F. Codebase familiarity, does the author show knowledge of adjacent code?
 
 RESEARCH QUESTIONS:
 
@@ -343,7 +343,7 @@ RESEARCH QUESTIONS:
 - Can understanding be inferred from artifacts that are already available in Git/GitHub/JIRA?
 - For each of our 6 proposed signals (A-F above): is there published evidence that this correlates with comprehension?
 - Are there other signals we missed? (e.g., test quality, code review given to others, Stack Overflow activity, IDE telemetry)
-- What is the base rate of "code submitted without understanding" — how common is this?
+- What is the base rate of "code submitted without understanding", how common is this?
 
 5.3. THE DUNNING-KRUGER PROBLEM IN CODE COMPREHENSION
 - Developers who don't understand code may BELIEVE they understand it.
@@ -382,7 +382,7 @@ RESEARCH AREA 6: PER-LANGUAGE EMPIRICAL BASELINES
 ═══════════════════════════════════════════════════════════
 
 STATUS: Signal thresholds are currently language-agnostic. No research conducted on per-language variation.
-IMPORTANCE: HIGH — a Python codebase and a Go codebase have fundamentally different baseline metrics. Language-agnostic thresholds produce false positives in some languages and false negatives in others.
+IMPORTANCE: HIGH, a Python codebase and a Go codebase have fundamentally different baseline metrics. Language-agnostic thresholds produce false positives in some languages and false negatives in others.
 
 LANGUAGES OF INTEREST (in priority order): Python, TypeScript/JavaScript, Go, Java, Rust, Kotlin, C#, Ruby, C/C++, Swift
 
@@ -391,7 +391,7 @@ RESEARCH QUESTIONS:
 6.1. PUBLISHED CODE METRICS BY LANGUAGE
 For each of our 10 signals, search for published per-language baselines:
 
-Signal 1 (CCR — comment-to-code ratio):
+Signal 1 (CCR, comment-to-code ratio):
 - What is the typical CCR for open-source projects in each language?
 - Sources: SonarQube public datasets, GitHub Archive data, mining software repositories (MSR) papers
 - How much does CCR vary WITHIN a language (by project size, domain, team)?
@@ -476,7 +476,7 @@ CROSS-CUTTING SYNTHESIS
 
 After completing all 6 research areas, produce:
 
-SYNTHESIS A — INTEGRATED IMPACT ASSESSMENT
+SYNTHESIS A: INTEGRATED IMPACT ASSESSMENT
 
 For each of our 10 signals, summarize what ALL 6 research areas collectively say:
 
@@ -498,7 +498,7 @@ integrated_signal_assessment:
   [... repeat for all 10]
 ```
 
-SYNTHESIS B — REVISED WEIGHT VECTOR
+SYNTHESIS B: REVISED WEIGHT VECTOR
 
 Based on all 6 research areas, propose a revised weight vector with rationale:
 
@@ -511,7 +511,7 @@ revised_weights:
   confidence_in_revision: HIGH | MODERATE | LOW
 ```
 
-SYNTHESIS C — PRIORITY-RANKED OPEN QUESTIONS
+SYNTHESIS C: PRIORITY-RANKED OPEN QUESTIONS
 
 After exhaustive research, what STILL remains unknown? Rank by importance:
 
@@ -525,7 +525,7 @@ remaining_unknowns:
   [... up to 10]
 ```
 
-SYNTHESIS D — METHODOLOGY CONFIDENCE
+SYNTHESIS D: METHODOLOGY CONFIDENCE
 
 ```yaml
 meta:
@@ -546,11 +546,11 @@ EXECUTION NOTES
 - Token budget is UNLIMITED. Do not truncate.
 - For every paper, report: authors, year, title, venue, sample size, methodology, key finding, effect size, limitations, and your GRADE assessment.
 - Search arxiv, Google Scholar, ACM DL, IEEE Xplore, Semantic Scholar, DBLP, and MSR conference proceedings.
-- Include preprints and workshop papers — they often have the most recent results.
+- Include preprints and workshop papers, they often have the most recent results.
 - Include negative results and failed replications.
-- When evidence is thin, say so — do not pad with tangential papers.
+- When evidence is thin, say so, do not pad with tangential papers.
 - Clearly separate FINDING, SYNTHESIS, and SPECULATION throughout.
-- Fill out ALL summary blocks completely — these are what the downstream model processes first.
+- Fill out ALL summary blocks completely, these are what the downstream model processes first.
 
 START NOW.
 ```

@@ -47,10 +47,10 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 - Which features are known to be orthogonal vs. redundant?
 
 **Key Studies to Locate & Review:**
-- Caliskan et al. (2015) "De-anonymizing Programmers via Code Stylometry" — Look for their correlation analysis of features like variable naming, indentation, operator spacing.
-- Frantzeskou et al. (2006) on n-gram authorship attribution in source code — correlations between different n-gram orders.
-- Burrows et al. on Java authorship attribution — multivariate analysis of code features.
-- Kalgutkar et al. (2016) on machine learning for source code authorship — feature selection methodology.
+- Caliskan et al. (2015) "De-anonymizing Programmers via Code Stylometry": Look for their correlation analysis of features like variable naming, indentation, operator spacing.
+- Frantzeskou et al. (2006) on n-gram authorship attribution in source code, correlations between different n-gram orders.
+- Burrows et al. on Java authorship attribution, multivariate analysis of code features.
+- Kalgutkar et al. (2016) on machine learning for source code authorship, feature selection methodology.
 
 **Specific Questions for Each Source:**
 - What correlation thresholds did they use for feature selection?
@@ -75,12 +75,12 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 - How does multicollinearity affect regression weights in software engineering models?
 
 **Key Studies to Locate & Review:**
-- Briand et al. (1996) "A Systematic Assessment of Current Object-Oriented Software Metrics" — Correlation matrix of CK metrics, multicollinearity diagnostics.
-- McCabe (1976) on cyclomatic complexity — foundational work; check for correlation with other structural metrics.
-- Halstead (1977) — Software Science metrics; look for inter-metric correlations.
-- Chidamber & Kemerer (1994) metrics suite — correlation analysis among the six CK metrics.
-- Fioravanti & Nesi (2007) on assessing multicollinearity in software metrics — systematic review.
-- Evett et al. (2016) "Statically Detecting Likely Buffer Overflow Vulnerabilities" — how they handle feature correlation in security code analysis.
+- Briand et al. (1996) "A Systematic Assessment of Current Object-Oriented Software Metrics": Correlation matrix of CK metrics, multicollinearity diagnostics.
+- McCabe (1976) on cyclomatic complexity, foundational work; check for correlation with other structural metrics.
+- Halstead (1977): Software Science metrics; look for inter-metric correlations.
+- Chidamber & Kemerer (1994) metrics suite, correlation analysis among the six CK metrics.
+- Fioravanti & Nesi (2007) on assessing multicollinearity in software metrics, systematic review.
+- Evett et al. (2016) "Statically Detecting Likely Buffer Overflow Vulnerabilities", how they handle feature correlation in security code analysis.
 
 **Specific Questions for Each Source:**
 - What VIF thresholds do they recommend? (Common: VIF > 5–10 indicates problematic multicollinearity)
@@ -106,11 +106,11 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 - What is a typical "effective dimensionality" for software code metrics?
 
 **Key Studies to Locate & Review:**
-- Turhan & Bener (2007) on PCA for software defect prediction — latent factor structure.
+- Turhan & Bener (2007) on PCA for software defect prediction, latent factor structure.
 - Jiang et al. (2008) on dimensionality reduction for cost-sensitive defect prediction.
 - Hall et al. (2012) systematic review of feature selection for defect prediction.
 - Ghotra et al. (2015) on the impact of feature standardization and selection in software defect prediction.
-- Shepperd et al. (2014) "Negative Results for Software Effort Estimation" — discusses correlation, overfitting, and multicollinearity pitfalls.
+- Shepperd et al. (2014) "Negative Results for Software Effort Estimation", discusses correlation, overfitting, and multicollinearity pitfalls.
 
 **Specific Questions for Each Source:**
 - When they applied PCA to code metrics, how many principal components explained 80%, 90%, 95% of variance?
@@ -137,10 +137,10 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 **Key Studies to Locate & Review:**
 - Inoue et al. (2023) "GPtzero: ChatGPT-Generated Text Detection" or similar authorship attribution work
 - GPTSniffer papers (look for arxiv submissions on GitHub-hosted AI-generated code detection)
-- CodeBERT paper (Feng et al. 2020) — does it discuss feature engineering or correlation?
-- Thawani et al. (2022) on detecting machine-generated text — correlation analysis of linguistic features
-- Wang et al. (2023) "Detecting AI-Generated Code is (Soon) Outdated" — adversarial robustness perspective
-- Weidman et al. (2023) on neural watermarking for code generation — feature correlation in embeddings
+- CodeBERT paper (Feng et al. 2020), does it discuss feature engineering or correlation?
+- Thawani et al. (2022) on detecting machine-generated text, correlation analysis of linguistic features
+- Wang et al. (2023) "Detecting AI-Generated Code is (Soon) Outdated", adversarial robustness perspective
+- Weidman et al. (2023) on neural watermarking for code generation, feature correlation in embeddings
 - Any ArXiv submissions on code plagiarism detection using multiple signals (e.g., Pun et al., Shayan et al.)
 
 **Specific Questions for Each Source:**
@@ -167,7 +167,7 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 - How do we assess whether an estimated correlation is "real" or noise?
 
 **Key Studies to Locate & Review:**
-- Efron & Tibshirani (1993) "An Introduction to the Bootstrap" — foundational methodology
+- Efron & Tibshirani (1993) "An Introduction to the Bootstrap", foundational methodology
 - Carpenter & Bithell (2000) "Bootstrap confidence intervals: when, which, what? A practical guide for general practitioners"
 - Kelley & Kelley (2012) on the role of sample size in correlation stability
 - Schroeder et al. (2016) on bootstrap methods for confidence intervals in empirical software engineering
@@ -199,11 +199,11 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 - How should we interpret published correlations with skepticism?
 
 **Key Studies to Locate & Review:**
-- Shepperd et al. (2014) "Negative Results for Software Effort Estimation" — famous critique of overfitting and generalization
+- Shepperd et al. (2014) "Negative Results for Software Effort Estimation", famous critique of overfitting and generalization
 - Kitchenham et al. (2002) on threats to validity in empirical software engineering
 - Arcuri & Briand (2011) on practical guidelines for regression testing in empirical software engineering
 - Easterbrook et al. (2008) "Selecting Empirical Methods for Software Engineering Research"
-- Posnett et al. (2013) "Ecological Inference in Empirical Software Engineering" — ecological fallacy warning
+- Posnett et al. (2013) "Ecological Inference in Empirical Software Engineering", ecological fallacy warning
 - Feldt et al. (2018) "Four Surprising Phenomena in the Popular Java Apache Commons Collections Library"
 
 **Specific Questions for Each Source:**
@@ -229,16 +229,16 @@ This deep research prompt is designed for ChatGPT Deep Research, Gemini Deep Res
 **Objective:** Identify publicly available datasets of AI-generated code with human-authored baselines.
 
 **Candidate Datasets to Investigate:**
-1. **CodeSearchNet Challenge** (GitHub) — Large corpus of diverse code; supplement with known GPT-generated variants?
-2. **Software Engineering Institute (SEI) / NIST Software Defect Datasets** — Established, peer-reviewed code collections
-3. **GitHub "Awesome AI-Generated Code" repositories** — Crowdsourced AI-generated code samples
-4. **Codeclimate / Code2Seq datasets** — Code structure benchmark data
-5. **SRGR (Source Code Repository Gradient) datasets** — If available and labeled for AI vs. human
-6. **Academic papers on AI code detection** — Many publish their evaluation datasets (e.g., on GitHub or Zenodo)
-7. **StackOverflow-derived datasets** — High-quality human code; synthesize AI variants via GPT-3.5/4 API
-8. **ArXiv repositories for ML papers on code** — Often include code snippets labeled by source
-9. **OpenAI Codex / GPT evaluation datasets** — OpenAI's published benchmarks for code generation
-10. **Kaggle AI-Generated Code Detection Competition datasets** — Purpose-built labeled data
+1. **CodeSearchNet Challenge** (GitHub): Large corpus of diverse code; supplement with known GPT-generated variants?
+2. **Software Engineering Institute (SEI) / NIST Software Defect Datasets**: Established, peer-reviewed code collections
+3. **GitHub "Awesome AI-Generated Code" repositories**: Crowdsourced AI-generated code samples
+4. **Codeclimate / Code2Seq datasets**: Code structure benchmark data
+5. **SRGR (Source Code Repository Gradient) datasets**: If available and labeled for AI vs. human
+6. **Academic papers on AI code detection**: Many publish their evaluation datasets (e.g., on GitHub or Zenodo)
+7. **StackOverflow-derived datasets**: High-quality human code; synthesize AI variants via GPT-3.5/4 API
+8. **ArXiv repositories for ML papers on code**: Often include code snippets labeled by source
+9. **OpenAI Codex / GPT evaluation datasets**: OpenAI's published benchmarks for code generation
+10. **Kaggle AI-Generated Code Detection Competition datasets**: Purpose-built labeled data
 
 **Evaluation Criteria for Dataset Selection:**
 - **Sample Size:** Minimum N = 500 AI-generated + 500 human-authored samples (ideally 1000+ each)
@@ -714,7 +714,7 @@ For each pair of signals (i, j) with |r_ij| > threshold (e.g., 0.5):
    - Hypothesis: Reflects "cookie cutter" pattern; AI generates uniform code, humans vary
 
 3. **Defensive Programming (γ):**
-   - Manifest signals: Error handling patterns, Edge case depth, Hallucinated API (inverted — fewer errors = more defensive)
+   - Manifest signals: Error handling patterns, Edge case depth, Hallucinated API (inverted, fewer errors = more defensive)
    - Hypothesis: Reflects carefulness; human code often has error handling, AI-generated may lack it
 
 4. **Declarative Style (δ):**

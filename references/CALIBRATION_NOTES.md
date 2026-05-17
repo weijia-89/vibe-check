@@ -1,4 +1,4 @@
-# Calibration notes — what each default actually represents
+# Calibration notes, what each default actually represents
 
 Every default threshold and weight in `scripts/vibe_check.py` is a **speculative
 prior**, not an empirically fitted value. This file says exactly what each is
@@ -19,7 +19,7 @@ Bench (CLAIMS C-008) confirms that detectors of this class are "far below
 practical usability" under distribution shift.
 
 **Implication.** A single fixed weight per signal is scientifically
-incorrect — the same signal contributes very differently per model and per
+incorrect, the same signal contributes very differently per model and per
 language. Defaults in this repo should be treated as a *starting prior* that
 must be replaced by per-codebase calibration before any quantitative claim.
 
