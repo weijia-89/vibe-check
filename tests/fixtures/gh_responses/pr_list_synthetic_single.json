@@ -1,0 +1,50 @@
+[
+  {
+    "number": 42,
+    "title": "vibe PR",
+    "author": {
+      "id": "U_synthetic_alice",
+      "is_bot": false,
+      "login": "alice",
+      "name": "Alice Synthetic"
+    },
+    "createdAt": "2026-05-01T12:00:00Z",
+    "mergedAt": "2026-05-02T12:00:00Z",
+    "additions": 50,
+    "deletions": 10,
+    "changedFiles": 3,
+    "commits": [
+      {
+        "authoredDate": "2026-05-01T11:00:00Z",
+        "authors": [
+          {
+            "email": "alice@example.com",
+            "id": "U_synthetic_alice",
+            "login": "alice",
+            "name": "Alice Synthetic"
+          }
+        ],
+        "committedDate": "2026-05-01T11:00:00Z",
+        "messageBody": "",
+        "messageHeadline": "feat: synthetic commit 1",
+        "oid": "synthetic0000000000000000000000000000001"
+      },
+      {
+        "authoredDate": "2026-05-01T11:30:00Z",
+        "authors": [
+          {
+            "email": "alice@example.com",
+            "id": "U_synthetic_alice",
+            "login": "alice",
+            "name": "Alice Synthetic"
+          }
+        ],
+        "committedDate": "2026-05-01T11:30:00Z",
+        "messageBody": "",
+        "messageHeadline": "feat: synthetic commit 2",
+        "oid": "synthetic0000000000000000000000000000002"
+      }
+    ],
+    "labels": []
+  }
+]

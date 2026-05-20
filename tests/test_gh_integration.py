@@ -16,15 +16,20 @@ Mocking strategy (per the PR-1 deferred-items rationale):
     bug in argv construction would go uncaught without explicit argv
     assertions. Tests below pin argv shape to mitigate.
 
-Fixture payloads are synthetic but match the gh JSON schema documented
-in calibration_pipeline.py's run_gh callers. A future PR may swap in
-real captured payloads under tests/fixtures/gh_responses/ if the
-synthetic shapes drift from the gh CLI's actual output.
+Fixture payloads live under tests/fixtures/gh_responses/. See the
+README there for capture provenance: four real-captures from cli/cli
+(`label list`, `pr list`, `pr diff`, `pr view --json commits`) plus
+five synthetic-augmented files for vibe/ai/human label scenarios that
+no real repo carries widely yet. Captures are static; tests never
+hit the network. The `_load()` helper reads a fixture file as raw
+text and returns it directly to the mocked subprocess stdout.
 
 Discipline (per the action plan):
     Each function gets ≥4 tests covering positive, negative, boundary,
     and adversarial (argv-shape pinning, budget enforcement). Adversarial
-    discrimination beats defensive coverage.
+    discrimination beats defensive coverage. An additional
+    TestRealCaptureSchema class demonstrates that real cli/cli output
+    flows through the code under test unmodified.
 """
 from __future__ import annotations
 
@@ -117,44 +122,36 @@ def fake_run(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Fixture builders — synthetic gh JSON payloads matching documented schemas
+# Fixture loaders
+#
+# Fixtures live under tests/fixtures/gh_responses/. See the README in
+# that directory for capture provenance (cli/cli @ 2026-05-19) and the
+# synthetic-augmented file inventory.
 # ---------------------------------------------------------------------------
 
 
-def _label_payload(*names: str) -> str:
-    """gh label list --json name,description response shape."""
-    return json.dumps(
-        [{"name": n, "description": f"desc for {n}"} for n in names]
-    )
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "gh_responses"
 
 
-def _pr_list_payload(*prs: dict) -> str:
-    """gh pr list --json number,title,author,createdAt,mergedAt,additions,deletions,
-    changedFiles,commits,labels response shape.
+def _load(filename: str) -> str:
+    """Load a fixture file as raw text.
 
-    Each dict overrides fields on a synthetic base PR.
+    Returned verbatim so the mocked subprocess stdout matches exactly
+    what `gh` would produce. Used for both JSON fixtures (`.json`) and
+    diff fixtures (`.diff`); callers don't need to decode/re-encode.
     """
-    base_pr = {
-        "number": 100,
-        "title": "synthetic PR",
-        "author": {"login": "alice"},
-        "createdAt": "2026-05-01T12:00:00Z",
-        "mergedAt": "2026-05-02T12:00:00Z",
-        "additions": 50,
-        "deletions": 10,
-        "changedFiles": 3,
-        "commits": {"totalCount": 2},
-        "labels": [],
-    }
-    out = []
-    for p in prs:
-        merged = {**base_pr, **p}
-        out.append(merged)
-    return json.dumps(out)
+    return (FIXTURES_DIR / filename).read_text()
 
 
-def _pr_view_commits_payload(*messages: str) -> str:
-    """gh pr view N --json commits response shape."""
+def _synthetic_commits(*messages: str) -> str:
+    """Construct a minimal commits payload from message headlines.
+
+    Used by tests that need controlled message strings to assert
+    specific text appears in `commit_meta`. The code under test reads
+    only `commits[].messageHeadline` from this schema, so omitting the
+    other fields is safe. For full-schema exercise, prefer the captured
+    `pr_view_commits_real_clicli.json` fixture via `_load()`.
+    """
     return json.dumps(
         {"commits": [{"messageHeadline": m} for m in messages]}
     )
@@ -178,16 +175,22 @@ class TestPhase1:
     def test_happy_path_with_one_vibe_label(self, fake_run, tmp_path):
         # Positive: one matched label ("vibe-coded"), one PR returned by
         # the pr list call. Verify labeled output, both gh calls happened,
-        # and label_map.tsv is written.
-        fake_run.enqueue(returncode=0, stdout=_label_payload("vibe-coded"))
+        # and label_map.tsv is written. Fixtures use the real gh schema
+        # shape (id, color, is_bot, full commits[]) captured from cli/cli.
         fake_run.enqueue(
             returncode=0,
-            stdout=_pr_list_payload({"number": 42, "title": "vibe PR"}),
+            stdout=_load("label_list_synthetic_single_vibe.json"),
+        )
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_list_synthetic_single.json"),
         )
         budget = Budget()
         labeled, label_map, matched = phase1("owner/repo", budget, tmp_path)
 
         assert len(labeled) == 1
+        # PR number 42 is the synthetic-fixture choice; see
+        # tests/fixtures/gh_responses/pr_list_synthetic_single.json.
         assert labeled[0]["pr_number"] == 42
         assert labeled[0]["label_class"] == "vibe-coded"
         assert label_map == {"vibe-coded": "vibe-coded"}
@@ -214,11 +217,14 @@ class TestPhase1:
 
     def test_no_matching_labels_returns_empty(self, fake_run, tmp_path):
         # Boundary: gh returns labels but NONE classify as vibe/ai/human
-        # (e.g. only "bug" and "feature" labels exist). The function
-        # returns empty matched set; the pr-list loop never iterates.
+        # (only generic project labels). The function returns empty
+        # matched set; the pr-list loop never iterates. Fixture has 3
+        # synthetic labels (bug, feature, documentation) all classifying
+        # to the `ignore` bucket. For the realistic 40-label case see
+        # TestRealCaptureSchema below.
         fake_run.enqueue(
             returncode=0,
-            stdout=_label_payload("bug", "feature", "documentation"),
+            stdout=_load("label_list_synthetic_no_match.json"),
         )
         budget = Budget()
         labeled, label_map, matched = phase1("owner/repo", budget, tmp_path)
@@ -233,16 +239,19 @@ class TestPhase1:
         # vibe-coded — the lower-priority class wins per label_priority()
         # ordering (vibe=0 < ai=1 < human=2). Pins the priority contract
         # that calibration ledger downstream depends on.
-        fake_run.enqueue(returncode=0, stdout=_label_payload("vibe-coded", "ai-assisted"))
-        # PR 99 returned under the vibe-coded label query.
         fake_run.enqueue(
             returncode=0,
-            stdout=_pr_list_payload({"number": 99, "title": "dual labeled"}),
+            stdout=_load("label_list_synthetic_vibe_plus_ai.json"),
+        )
+        # PR 99 returned under the vibe-coded label query (first iteration).
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_list_synthetic_dual_labeled.json"),
         )
         # Same PR 99 returned under the ai-assisted label query.
         fake_run.enqueue(
             returncode=0,
-            stdout=_pr_list_payload({"number": 99, "title": "dual labeled"}),
+            stdout=_load("pr_list_synthetic_dual_labeled.json"),
         )
         budget = Budget()
         labeled, _label_map, _matched = phase1("owner/repo", budget, tmp_path)
@@ -256,7 +265,10 @@ class TestPhase1:
         # Adversarial: budget exhausts after the label call. The pr-list
         # loop should short-circuit (the `if code == -1` branch). Pins
         # the anti-cascade contract.
-        fake_run.enqueue(returncode=0, stdout=_label_payload("vibe-coded", "ai-assisted"))
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_synthetic_vibe_plus_ai.json"),
+        )
         # Exhaust phase-1 budget so the next budget.gh("1") returns False
         # and run_gh returns (-1, "").
         budget = Budget()
@@ -297,20 +309,27 @@ class TestFetchPRDetail:
     """
 
     def test_happy_path_writes_diff_and_captures_commits(self, fake_run, tmp_path):
-        # Positive: diff fetched, file written, commits captured.
-        diff_text = "+++ b/foo.py\n@@ -0,0 +1,1 @@\n+pass\n"
+        # Positive: diff fetched, file written, commits captured. Uses
+        # the REAL cli/cli PR 13444 capture (a small docs-only PR) for
+        # both diff and commits, so the full schema shape — including
+        # commit `authors[]`, `oid`, `messageBody` — flows through the
+        # code under test as a smoke test of real-world parsing.
+        diff_text = _load("pr_diff_real_clicli.diff")
         fake_run.enqueue(returncode=0, stdout=diff_text)
-        fake_run.enqueue(returncode=0, stdout=_pr_view_commits_payload(
-            "feat: add foo", "fix: typo in foo"
-        ))
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_view_commits_real_clicli.json"),
+        )
         budget = Budget()
         diff_dir = tmp_path / "diffs"
         diff_dir.mkdir()
-        path, commit_meta = fetch_pr_detail("owner/repo", budget, "1", 42, diff_dir)
-        assert path == diff_dir / "pr_42.diff"
+        path, commit_meta = fetch_pr_detail("owner/repo", budget, "1", 13444, diff_dir)
+        assert path == diff_dir / "pr_13444.diff"
         assert path.read_text() == diff_text
-        assert "feat: add foo" in commit_meta
-        assert "fix: typo in foo" in commit_meta
+        # Assert against the real PR 13444 commit headline (verbatim
+        # from the captured fixture). If the fixture is re-captured
+        # against a different PR, this assertion needs updating.
+        assert "docs: drop --repo gh-cli from dnf install lines" in commit_meta
         # pr_detail counter incremented exactly once.
         assert budget.pr_detail == 1
 
@@ -385,8 +404,10 @@ class TestFetchPRDetail:
         # Adversarial: the diff invocation must include --color=never so
         # ANSI escape codes don't pollute the diff written to disk (and
         # subsequently parsed by vibe_check.py). Pin this argv shape.
+        # This test cares about argv only, not commit content, so it uses
+        # the lightweight _synthetic_commits helper rather than a fixture.
         fake_run.enqueue(returncode=0, stdout="+x\n")
-        fake_run.enqueue(returncode=0, stdout=_pr_view_commits_payload("x"))
+        fake_run.enqueue(returncode=0, stdout=_synthetic_commits("x"))
         budget = Budget()
         diff_dir = tmp_path / "diffs"
         diff_dir.mkdir()
@@ -479,3 +500,99 @@ class TestRunVibe:
         assert str(diff_path) in argv
         assert "--format" in argv
         assert "json" in argv
+
+
+# ---------------------------------------------------------------------------
+# Real-capture schema contract
+# ---------------------------------------------------------------------------
+
+
+class TestRealCaptureSchema:
+    """
+    Demonstrates that verbatim `gh` output (captured from cli/cli on
+    2026-05-19) flows through the code under test unmodified. The
+    value here is a schema contract regression test: if gh's JSON
+    shape drifts in a future major version, these tests catch it
+    before production runs do.
+
+    See tests/fixtures/gh_responses/README.md for capture provenance
+    and re-capture instructions.
+    """
+
+    def test_real_clicli_labels_all_classify_as_ignore(self, fake_run, tmp_path):
+        # Realistic shape: cli/cli has 40 labels (bug, enhancement,
+        # windows, gh-pr, dependencies, etc.). NONE classify as
+        # vibe/ai/human under classify_label's rules. Pins both:
+        #   (a) phase1 handles the 40-label case without error
+        #   (b) classify_label's default-to-ignore behavior holds for
+        #       a realistic project label set
+        # If a future classify_label refactor accidentally promotes
+        # one of these labels (e.g. "auto" partially matching the
+        # "auto + code/gen" branch), this test fails loudly.
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_real_clicli.json"),
+        )
+        budget = Budget()
+        labeled, label_map, matched = phase1("cli/cli", budget, tmp_path)
+        # Zero PRs labeled because no labels matched.
+        assert labeled == []
+        assert matched == set()
+        # phase1 filters out ignore-classified labels at the
+        # bucket == "ignore": continue clause, so label_map (built
+        # from label_map_rows after the filter) is empty for this
+        # all-ignore fixture. This is the contract: realistic project
+        # labels produce no calibration-pipeline work.
+        assert label_map == {}
+        # Only the labels gh call happened; no pr-list calls because
+        # matched_names is empty so the pr-list loop never iterates.
+        assert len(fake_run.calls) == 1
+
+    def test_real_clicli_pr_list_with_synthetic_vibe_label(self, fake_run, tmp_path):
+        # Pairs a synthetic vibe label (so classification matches)
+        # with the REAL cli/cli pr_list response shape — including
+        # is_bot author flags, full commits[] with authors[]/oid/
+        # messageBody, and labels with color/id/description. Pins
+        # that the rich real schema flows through phase1's writer
+        # without KeyError or TypeError on optional fields.
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_synthetic_single_vibe.json"),
+        )
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_list_real_clicli.json"),
+        )
+        budget = Budget()
+        labeled, _label_map, matched = phase1("owner/repo", budget, tmp_path)
+        assert matched == {"vibe-coded"}
+        # 5 real PRs from cli/cli @ 2026-05-19; all end up labeled
+        # vibe-coded because the synthetic label query "returned" them.
+        # If the fixture is re-captured with a different PR count,
+        # this assertion needs updating.
+        assert len(labeled) == 5
+        # PR 13444 (the docs-only PR used for the diff fixture) is
+        # one of the captured 5. Verify it appears.
+        pr_numbers = {row["pr_number"] for row in labeled}
+        assert 13444 in pr_numbers
+
+    def test_real_clicli_diff_preserves_content_byte_for_byte(self, fake_run, tmp_path):
+        # Pins that fetch_pr_detail does NOT munge the diff text on
+        # the path from gh stdout → on-disk file. A future refactor
+        # that, say, strips trailing whitespace or normalizes line
+        # endings would change the byte content and break this test.
+        # The captured diff from cli/cli PR 13444 is a small docs
+        # change with realistic unified-diff hunk headers.
+        diff_text = _load("pr_diff_real_clicli.diff")
+        fake_run.enqueue(returncode=0, stdout=diff_text)
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_view_commits_real_clicli.json"),
+        )
+        budget = Budget()
+        diff_dir = tmp_path / "diffs"
+        diff_dir.mkdir()
+        path, _commit_meta = fetch_pr_detail("cli/cli", budget, "1", 13444, diff_dir)
+        assert path is not None
+        # Byte-for-byte equality, not just text equivalence.
+        assert path.read_bytes() == diff_text.encode("utf-8")

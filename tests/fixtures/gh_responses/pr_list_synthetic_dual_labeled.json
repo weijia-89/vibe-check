@@ -1,0 +1,35 @@
+[
+  {
+    "number": 99,
+    "title": "dual labeled",
+    "author": {
+      "id": "U_synthetic_bob",
+      "is_bot": false,
+      "login": "bob",
+      "name": "Bob Synthetic"
+    },
+    "createdAt": "2026-05-05T08:00:00Z",
+    "mergedAt": "2026-05-06T08:00:00Z",
+    "additions": 200,
+    "deletions": 40,
+    "changedFiles": 7,
+    "commits": [
+      {
+        "authoredDate": "2026-05-05T07:00:00Z",
+        "authors": [
+          {
+            "email": "bob@example.com",
+            "id": "U_synthetic_bob",
+            "login": "bob",
+            "name": "Bob Synthetic"
+          }
+        ],
+        "committedDate": "2026-05-05T07:00:00Z",
+        "messageBody": "",
+        "messageHeadline": "feat: dual-labeled work",
+        "oid": "synthetic0000000000000000000000000000099"
+      }
+    ],
+    "labels": []
+  }
+]

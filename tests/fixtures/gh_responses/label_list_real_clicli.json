@@ -1,0 +1,162 @@
+[
+  {
+    "description": "Something isn't working",
+    "name": "bug"
+  },
+  {
+    "description": "",
+    "name": "blocked"
+  },
+  {
+    "description": "An engineering task needs design to proceed",
+    "name": "needs-design"
+  },
+  {
+    "description": "a request to improve CLI",
+    "name": "enhancement"
+  },
+  {
+    "description": "Related to Windows hosts or runners",
+    "name": "windows"
+  },
+  {
+    "description": "More info needed from user/contributor",
+    "name": "more-info-needed"
+  },
+  {
+    "description": "A chore that addresses technical debt",
+    "name": "tech-debt"
+  },
+  {
+    "description": "",
+    "name": "packaging"
+  },
+  {
+    "description": "Affects more than a few users but doesn't prevent core functions",
+    "name": "priority-2"
+  },
+  {
+    "description": "Affects a small number of users or is largely cosmetic",
+    "name": "priority-3"
+  },
+  {
+    "description": "Affects a large population and inhibits work",
+    "name": "priority-1"
+  },
+  {
+    "description": "",
+    "name": "docs"
+  },
+  {
+    "description": "CLI team needs to investigate",
+    "name": "needs-investigation"
+  },
+  {
+    "description": "Contributions welcome",
+    "name": "help wanted"
+  },
+  {
+    "description": "",
+    "name": "config"
+  },
+  {
+    "description": "related to tokens, authentication state, or oauth",
+    "name": "auth"
+  },
+  {
+    "description": "",
+    "name": "accessibility"
+  },
+  {
+    "description": "",
+    "name": "actions"
+  },
+  {
+    "description": "This issue is not accepting PRs from outside contributors",
+    "name": "core"
+  },
+  {
+    "description": "",
+    "name": "good first issue"
+  },
+  {
+    "description": "Related to GitHub CLI extensions",
+    "name": "extensions"
+  },
+  {
+    "description": "needs to be reviewed",
+    "name": "needs-triage"
+  },
+  {
+    "description": "Feature changes that require discussion primarily among the GitHub CLI team",
+    "name": "discuss"
+  },
+  {
+    "description": "Problems with the GitHub platform rather than the CLI client",
+    "name": "platform"
+  },
+  {
+    "description": "pull request originating outside of the CLI core team",
+    "name": "external"
+  },
+  {
+    "description": "An idea that could make a good GitHub CLI extension",
+    "name": "extension-idea"
+  },
+  {
+    "description": "",
+    "name": "codespaces"
+  },
+  {
+    "description": "Pull requests that update a dependency file",
+    "name": "dependencies"
+  },
+  {
+    "description": "Pull requests that update GitHub Actions code",
+    "name": "github_actions"
+  },
+  {
+    "description": "",
+    "name": "project"
+  },
+  {
+    "description": "relating to the gh repo command",
+    "name": "gh-repo"
+  },
+  {
+    "description": "relating to the gh project command",
+    "name": "gh-project"
+  },
+  {
+    "description": "relating to the gh pr command",
+    "name": "gh-pr"
+  },
+  {
+    "description": "relating to the gh run command",
+    "name": "gh-run"
+  },
+  {
+    "description": "relating to the gh issue command",
+    "name": "gh-issue"
+  },
+  {
+    "description": "relating to the gh ruleset command",
+    "name": "gh-ruleset"
+  },
+  {
+    "description": "relating to the gh workflow command",
+    "name": "gh-workflow"
+  },
+  {
+    "description": "relating to the gh gpg-key command",
+    "name": "gh-gpg-key"
+  },
+  {
+    "description": "relating to the gh cache command",
+    "name": "gh-cache"
+  },
+  {
+    "description": "related to the gh alias command",
+    "name": "gh-alias"
+  }
+]

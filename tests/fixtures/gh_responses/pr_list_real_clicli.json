@@ -1,0 +1,242 @@
+[
+  {
+    "additions": 2,
+    "author": {
+      "id": "U_kgDOEM456Q",
+      "is_bot": false,
+      "login": "c-tonneslan",
+      "name": "Charlie Tonneslan"
+    },
+    "changedFiles": 1,
+    "commits": [
+      {
+        "authoredDate": "2026-05-16T17:56:46Z",
+        "authors": [
+          {
+            "email": "cst0520@gmail.com",
+            "id": "U_kgDOEM456Q",
+            "login": "c-tonneslan",
+            "name": "Charlie Tonneslan"
+          }
+        ],
+        "committedDate": "2026-05-16T17:56:46Z",
+        "messageBody": "The documented dnf install lines pin resolution to the gh-cli repo\nwith --repo gh-cli. That repo only ships the gh package, so on a\nfresh Fedora install without git already present the install fails\nwith \"nothing provides git needed by gh-2.87.3-1.x86_64 from gh-cli\"\n(#12808). Dropping --repo lets dnf pull git from the system repos\nwhile still installing gh from gh-cli.\n\nThe maintainer suggested this in the issue thread after spotting\nthat other projects (docker, vagrant) use addrepo without the\nrestrictive --repo flag.\n\nCloses #12808\n\nSigned-off-by: Charlie Tonneslan <cst0520@gmail.com>",
+        "messageHeadline": "docs: drop --repo gh-cli from dnf install lines",
+        "oid": "084afb30d24be55c8d4a0a4ef296137cc9461452"
+      }
+    ],
+    "createdAt": "2026-05-16T17:57:00Z",
+    "deletions": 2,
+    "labels": [
+      {
+        "id": "LA_kwDODKw3uc7Vepyn",
+        "name": "external",
+        "description": "pull request originating outside of the CLI core team",
+        "color": "2700AF"
+      },
+      {
+        "id": "LA_kwDODKw3uc8AAAACX8pa3w",
+        "name": "ready-for-review",
+        "description": "",
+        "color": "39d965"
+      }
+    ],
+    "mergedAt": "2026-05-18T09:29:34Z",
+    "number": 13444,
+    "title": "docs: drop --repo gh-cli from dnf install lines"
+  },
+  {
+    "additions": 3,
+    "author": {
+      "is_bot": true,
+      "login": "app/dependabot"
+    },
+    "changedFiles": 2,
+    "commits": [
+      {
+        "authoredDate": "2026-05-15T14:03:42Z",
+        "authors": [
+          {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "id": "MDM6Qm90NDk2OTkzMzM=",
+            "login": "dependabot[bot]",
+            "name": "dependabot[bot]"
+          }
+        ],
+        "committedDate": "2026-05-15T14:03:42Z",
+        "messageBody": "Bumps [google.golang.org/grpc](https://github.com/grpc/grpc-go) from 1.81.0 to 1.81.1.\n- [Release notes](https://github.com/grpc/grpc-go/releases)\n- [Commits](https://github.com/grpc/grpc-go/compare/v1.81.0...v1.81.1)\n\n---\nupdated-dependencies:\n- dependency-name: google.golang.org/grpc\n  dependency-version: 1.81.1\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>",
+        "messageHeadline": "chore(deps): bump google.golang.org/grpc from 1.81.0 to 1.81.1",
+        "oid": "93e0a2811b7bf8d110c2558c123da773d2046fbd"
+      }
+    ],
+    "createdAt": "2026-05-15T14:03:43Z",
+    "deletions": 3,
+    "labels": [
+      {
+        "id": "LA_kwDODKw3uc8AAAABYP6ixA",
+        "name": "dependencies",
+        "description": "Pull requests that update a dependency file",
+        "color": "0366d6"
+      },
+      {
+        "id": "LA_kwDODKw3uc8AAAABaLVG_Q",
+        "name": "go",
+        "description": "Pull requests that update Go code",
+        "color": "16e2e2"
+      }
+    ],
+    "mergedAt": "2026-05-15T14:15:50Z",
+    "number": 13436,
+    "title": "chore(deps): bump google.golang.org/grpc from 1.81.0 to 1.81.1"
+  },
+  {
+    "additions": 153,
+    "author": {
+      "id": "MDQ6VXNlcjM5ODAyNw==",
+      "is_bot": false,
+      "login": "bdehamer",
+      "name": "Brian DeHamer"
+    },
+    "changedFiles": 6,
+    "commits": [
+      {
+        "authoredDate": "2026-05-14T17:31:10Z",
+        "authors": [
+          {
+            "email": "bdehamer@github.com",
+            "id": "MDQ6VXNlcjM5ODAyNw==",
+            "login": "bdehamer",
+            "name": "Brian DeHamer"
+          },
+          {
+            "email": "223556219+Copilot@users.noreply.github.com",
+            "id": "BOT_kgDODVMyew",
+            "login": "Copilot",
+            "name": "Copilot"
+          }
+        ],
+        "committedDate": "2026-05-14T17:31:10Z",
+        "messageBody": "The 'gh release verify' and 'gh release verify-asset' commands hard-coded\na 'sha1:' prefix when constructing the digest identifier for a release\ntag's commit SHA. Once GitHub repositories using SHA-256 commit digests\nare supported, that ref will be a 64-character SHA-256 hash and labeling\nit as 'sha1:' is both misleading in user output and incorrect for the\nattestation lookup.\n\nAdd a shared 'DigestAlgForRef' helper that returns 'sha256' for 64-char\ndigests and 'sha1' otherwise (preserving existing behavior for SHA-1\nrepositories), and use it at both call sites. Add test coverage for the\nhelper and for the SHA-256 error path in both commands.\n\nFixes #13429\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
+        "messageHeadline": "Derive digest algorithm from ref length in release verify commands",
+        "oid": "5c437a887595846af0ac053d0b03bd0a5783295d"
+      },
+      {
+        "authoredDate": "2026-05-15T14:57:58Z",
+        "authors": [
+          {
+            "email": "bdehamer@github.com",
+            "id": "MDQ6VXNlcjM5ODAyNw==",
+            "login": "bdehamer",
+            "name": "Brian DeHamer"
+          },
+          {
+            "email": "223556219+Copilot@users.noreply.github.com",
+            "id": "BOT_kgDODVMyew",
+            "login": "Copilot",
+            "name": "Copilot"
+          }
+        ],
+        "committedDate": "2026-05-15T14:57:58Z",
+        "messageBody": "Address PR review feedback:\n- Rename SHA1 tests to make the algorithm explicit\n- Assert the sha1:/sha256: prefix appears in the error\n- Use a capturing MockClient so we verify the actual digest sent to\n  GetByDigest, not just the wrapped error message\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
+        "messageHeadline": "Assert digest prefix in release verify no-attestation tests",
+        "oid": "d9eb0627dceeb49b2943fa992414eb185787d02e"
+      }
+    ],
+    "createdAt": "2026-05-14T17:32:37Z",
+    "deletions": 6,
+    "labels": [
+      {
+        "id": "LA_kwDODKw3uc7Vepyn",
+        "name": "external",
+        "description": "pull request originating outside of the CLI core team",
+        "color": "2700AF"
+      },
+      {
+        "id": "LA_kwDODKw3uc8AAAACX8pa3w",
+        "name": "ready-for-review",
+        "description": "",
+        "color": "39d965"
+      }
+    ],
+    "mergedAt": "2026-05-15T15:52:07Z",
+    "number": 13430,
+    "title": "Derive digest algorithm from ref length in release verify commands"
+  },
+  {
+    "additions": 3,
+    "author": {
+      "is_bot": true,
+      "login": "app/dependabot"
+    },
+    "changedFiles": 2,
+    "commits": [
+      {
+        "authoredDate": "2026-05-13T14:19:14Z",
+        "authors": [
+          {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "id": "MDM6Qm90NDk2OTkzMzM=",
+            "login": "dependabot[bot]",
+            "name": "dependabot[bot]"
+          }
+        ],
+        "committedDate": "2026-05-13T14:19:14Z",
+        "messageBody": "Bumps [golang.org/x/crypto](https://github.com/golang/crypto) from 0.50.0 to 0.51.0.\n- [Commits](https://github.com/golang/crypto/compare/v0.50.0...v0.51.0)\n\n---\nupdated-dependencies:\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.51.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>",
+        "messageHeadline": "chore(deps): bump golang.org/x/crypto from 0.50.0 to 0.51.0",
+        "oid": "712826a83ed9968745ee2a83aca6e287b524a3d8"
+      }
+    ],
+    "createdAt": "2026-05-13T14:19:16Z",
+    "deletions": 3,
+    "labels": [
+      {
+        "id": "LA_kwDODKw3uc8AAAABYP6ixA",
+        "name": "dependencies",
+        "description": "Pull requests that update a dependency file",
+        "color": "0366d6"
+      },
+      {
+        "id": "LA_kwDODKw3uc8AAAABaLVG_Q",
+        "name": "go",
+        "description": "Pull requests that update Go code",
+        "color": "16e2e2"
+      }
+    ],
+    "mergedAt": "2026-05-14T11:47:40Z",
+    "number": 13420,
+    "title": "chore(deps): bump golang.org/x/crypto from 0.50.0 to 0.51.0"
+  },
+  {
+    "additions": 2,
+    "author": {
+      "id": "MDQ6VXNlcjE2MTE1MTA=",
+      "is_bot": false,
+      "login": "williammartin",
+      "name": "William Martin"
+    },
+    "changedFiles": 1,
+    "commits": [
+      {
+        "authoredDate": "2026-05-13T10:43:28Z",
+        "authors": [
+          {
+            "email": "williammartin@github.com",
+            "id": "MDQ6VXNlcjE2MTE1MTA=",
+            "login": "williammartin",
+            "name": "William Martin"
+          }
+        ],
+        "committedDate": "2026-05-13T10:43:28Z",
+        "messageBody": "",
+        "messageHeadline": "Update CODEOWNERS for skills directory ownership",
+        "oid": "83bc3de748abca16d950f65d624052be8d30edae"
+      }
+    ],
+    "createdAt": "2026-05-13T10:43:47Z",
+    "deletions": 2,
+    "labels": [],
+    "mergedAt": "2026-05-13T11:10:56Z",
+    "number": 13416,
+    "title": "Update CODEOWNERS for skills directory ownership"
+  }
+]
