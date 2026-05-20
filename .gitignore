@@ -19,3 +19,8 @@ scripts/vibe_detect/vibe_detect_results.json
 *.swp
 .idea/
 .vscode/
+
+# Local progress logs (per-branch, do not commit)
+progress.txt
+.coverage
+.mutmut-cache

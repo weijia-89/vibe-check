@@ -1,0 +1,60 @@
+name: mutation testing
+
+# Mutmut is expensive (minutes per module). Don't run on every push;
+# run weekly and on manual dispatch. The mutation kill-rate is a
+# slower-loop signal about test discrimination, not a per-PR gate.
+on:
+  schedule:
+    - cron: "0 7 * * 1"  # Mondays 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Comma-separated paths to mutate (default: drift + calibration modules)"
+        required: false
+        default: "scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py"
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dev deps (not shipped)
+        run: pip install mutmut pytest
+
+      - name: Run mutmut on drift + calibration source
+        run: |
+          PATHS="${{ github.event.inputs.paths }}"
+          if [ -z "$PATHS" ]; then
+            PATHS="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py"
+          fi
+          echo "Mutating: $PATHS"
+          # mutmut's runner needs the actual test command; pytest invocation
+          # mirrors the test-pytest CI job's runner.
+          mutmut run \
+            --paths-to-mutate="$PATHS" \
+            --runner="python -m pytest tests/test_drift.py tests/test_calibration.py -x --tb=no -q" \
+            || true   # mutmut exits non-zero whenever any mutant survives;
+                       # we want the report regardless.
+
+      - name: Mutmut results
+        run: |
+          mutmut results || true
+          # Surface a junit-style summary file we can attach.
+          mutmut junitxml > mutmut.xml || true
+
+      - name: Upload mutmut artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-results
+          path: |
+            mutmut.xml
+            .mutmut-cache
+          if-no-files-found: warn
