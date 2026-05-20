@@ -1,13 +1,14 @@
 """
-Tests for calibration functions in scripts/calibration_pipeline.py and
-scripts/vibe_calibration.py.
+Tests for calibration functions in scripts/calibration_pipeline.py,
+scripts/vibe_calibration.py, and scripts/vibe_check.py.
 
 Scope: the pure statistical functions (cohen's d, ROC-Youden, beta HDI,
-MDE, skewness, pooled SD, AUC) and the pure classification helpers
+MDE, skewness, pooled SD, AUC), the pure classification helpers
 (classify_label, label_priority, parse_iso, size_stratum, infer_pr_type,
-stratified_sample, stats_dict). Skipped: gh-CLI-dependent network functions
-(phase1, fetch_pr_detail, run_vibe) and module-state-mutating functions
-(load_calibration_overrides); those need a separate integration test PR.
+stratified_sample, stats_dict), and the module-state-mutating override
+loader (load_calibration_overrides in vibe_check.py). The gh-CLI-dependent
+network functions (phase1, fetch_pr_detail, run_vibe in
+calibration_pipeline.py) are covered in tests/test_gh_integration.py.
 
 Discipline (per the action plan):
     Each function gets ≥3 tests covering positive, negative, and boundary.
@@ -18,10 +19,16 @@ Discipline (per the action plan):
 The statistical functions are the load-bearing claim of the calibration
 pipeline's evidence ledger. These tests pin the math so that a future
 refactor can't quietly change a threshold or a confidence interval the
-calibration ledger was anchored against.
+calibration ledger was anchored against. load_calibration_overrides is
+the runtime hook that promotes calibration_pipeline.py's findings into
+vibe_check.py's live decision surface; tests pin the contract for
+threshold update, weight clamping, version-gated apply, and
+no-mutation-on-failure paths.
 """
 from __future__ import annotations
 
+import copy
+import json
 import math
 import random
 import sys
@@ -48,6 +55,12 @@ from calibration_pipeline import (  # noqa: E402
     roc_auc_mannwhitney,
     roc_youden,
     skewness,
+)
+import vibe_check  # noqa: E402  (module import for monkeypatching globals)
+from vibe_check import (  # noqa: E402
+    CALIBRATION_VERSION,
+    OVERRIDE_FILENAME,
+    load_calibration_overrides,
 )
 from vibe_calibration import (  # noqa: E402
     infer_pr_type,
@@ -693,3 +706,252 @@ class TestStratifiedSample:
         picks = stratified_sample(pool, 30, random.Random(42))
         strata = {size_stratum(p["additions"], p["deletions"]) for p in picks}
         assert len(strata) >= 2  # at least two distinct size buckets
+
+
+# ---------------------------------------------------------------------------
+# load_calibration_overrides (vibe_check.py)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def restore_vibe_check_globals():
+    """
+    Snapshot and restore SIGNAL_THRESHOLDS and WEIGHTS so per-test mutations
+    don't leak across tests. load_calibration_overrides mutates these
+    module-level dicts in-place; without this fixture, any test that
+    successfully applies an override would contaminate every subsequent test
+    in the suite.
+
+    Pattern: deepcopy the dicts before yield; clear+update on teardown so
+    the dict identity is preserved (other modules may already hold a
+    reference) but the contents revert to the source-file defaults.
+    """
+    thresholds_snapshot = copy.deepcopy(vibe_check.SIGNAL_THRESHOLDS)
+    weights_snapshot = copy.deepcopy(vibe_check.WEIGHTS)
+    yield
+    vibe_check.SIGNAL_THRESHOLDS.clear()
+    vibe_check.SIGNAL_THRESHOLDS.update(thresholds_snapshot)
+    vibe_check.WEIGHTS.clear()
+    vibe_check.WEIGHTS.update(weights_snapshot)
+
+
+class TestLoadCalibrationOverrides:
+    """
+    load_calibration_overrides() reads {TELEMETRY_DIR}/calibration_override.json
+    and mutates SIGNAL_THRESHOLDS and WEIGHTS in vibe_check.py in-place.
+    Returns True on apply, False on every short-circuit (no telemetry dir,
+    no file, malformed JSON, stale version).
+
+    Test isolation pattern:
+        - monkeypatch swaps vibe_check.TELEMETRY_DIR to tmp_path per test;
+          the function reads this by bare-name lookup at call time, not at
+          import time, so no importlib.reload is needed.
+        - restore_vibe_check_globals fixture snapshots and restores
+          SIGNAL_THRESHOLDS and WEIGHTS so positive-path mutations don't
+          leak across tests in the file or in the broader test suite.
+    """
+
+    pytestmark = pytest.mark.usefixtures("restore_vibe_check_globals")
+
+    def _write_override(self, tmp_path: Path, payload: dict) -> Path:
+        """Write a JSON override file at the canonical location."""
+        p = tmp_path / OVERRIDE_FILENAME
+        p.write_text(json.dumps(payload))
+        return p
+
+    def test_returns_false_when_telemetry_dir_unset(self, monkeypatch):
+        # Negative: the first guard. With TELEMETRY_DIR None (env var unset),
+        # the function returns False immediately without touching anything.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", None)
+        before = copy.deepcopy(vibe_check.SIGNAL_THRESHOLDS)
+        assert load_calibration_overrides() is False
+        assert vibe_check.SIGNAL_THRESHOLDS == before
+
+    def test_returns_false_when_file_absent(self, tmp_path, monkeypatch):
+        # Negative: TELEMETRY_DIR is set but no override file exists at the
+        # expected location. Returns False; no mutation.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        before = copy.deepcopy(vibe_check.SIGNAL_THRESHOLDS)
+        assert load_calibration_overrides() is False
+        assert vibe_check.SIGNAL_THRESHOLDS == before
+
+    def test_returns_false_on_malformed_json(self, tmp_path, monkeypatch):
+        # Negative: file exists but content is not valid JSON. The
+        # except (json.JSONDecodeError, OSError) clause catches it.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        (tmp_path / OVERRIDE_FILENAME).write_text("not-json{")
+        before = copy.deepcopy(vibe_check.SIGNAL_THRESHOLDS)
+        assert load_calibration_overrides() is False
+        assert vibe_check.SIGNAL_THRESHOLDS == before
+
+    def test_well_formed_thresholds_applied(self, tmp_path, monkeypatch):
+        # Positive: a valid override JSON updates threshold/baselines
+        # in-place and returns True.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {
+                "docstring_consistency": {"threshold": 0.50, "llm_baseline": 0.85},
+            },
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["threshold"] == 0.50
+        assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["llm_baseline"] == 0.85
+        # human_baseline not in override → unchanged (pin the field-by-field
+        # selective-update contract; a future refactor must not silently
+        # replace the whole sub-dict).
+        assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["human_baseline"] == 0.25
+
+    def test_partial_override_leaves_other_signals_untouched(self, tmp_path, monkeypatch):
+        # Boundary: only one signal's threshold is overridden. Other signals
+        # must remain at their compiled-in defaults.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {"naming_uniformity": {"threshold": 0.75}},
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["naming_uniformity"]["threshold"] == 0.75
+        # Other signals unchanged.
+        assert vibe_check.SIGNAL_THRESHOLDS["error_handling"]["threshold"] == 0.45
+        assert vibe_check.SIGNAL_THRESHOLDS["edge_case_depth"]["threshold"] == 1.5
+
+    def test_unknown_signal_name_silently_ignored(self, tmp_path, monkeypatch):
+        # Boundary: an override for a signal name not in SIGNAL_THRESHOLDS
+        # is skipped via the `if sig_name in SIGNAL_THRESHOLDS` guard. No
+        # exception; the function still returns True.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {"nonexistent_signal_xyz": {"threshold": 0.99}},
+        })
+        assert load_calibration_overrides() is True
+        assert "nonexistent_signal_xyz" not in vibe_check.SIGNAL_THRESHOLDS
+
+    def test_stale_base_calibration_version_rejected(self, tmp_path, monkeypatch):
+        # Negative: an override produced against a different calibration
+        # epoch (and not the legacy synonym) must be ignored. Returns False,
+        # SIGNAL_THRESHOLDS unchanged.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": "v0.99.0_future_epoch_not_yet_real",
+            "thresholds": {"docstring_consistency": {"threshold": 0.10}},
+        })
+        before = copy.deepcopy(vibe_check.SIGNAL_THRESHOLDS)
+        assert load_calibration_overrides() is False
+        assert vibe_check.SIGNAL_THRESHOLDS == before
+
+    def test_legacy_v2026_q2_gemini_version_accepted(self, tmp_path, monkeypatch):
+        # Boundary: the documented legacy synonym (v2026_q2_gemini from
+        # v0.1.x) is still honored so existing user calibration files keep
+        # working after the v0.2.0 rename. See CHANGELOG migration note.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": "v2026_q2_gemini",
+            "thresholds": {"comment_phrasing": {"threshold": 0.20}},
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["comment_phrasing"]["threshold"] == 0.20
+
+    def test_missing_base_calibration_key_accepted(self, tmp_path, monkeypatch):
+        # Boundary: when `base_calibration` is absent, `ov = ""` and the
+        # version-mismatch guard short-circuits via `if ov and ...`. The
+        # override is applied; this is the documented permissive path for
+        # legacy files that pre-dated the version-tag convention.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "thresholds": {"function_length": {"threshold": 0.5}},
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["function_length"]["threshold"] == 0.5
+
+    def test_weight_above_30pct_clamped(self, tmp_path, monkeypatch):
+        # Boundary: an override that tries to push a single signal's weight
+        # above 0.30 must be clamped (documented invariant: no single signal
+        # can dominate the overall score). Re-normalization runs afterward,
+        # so the post-norm value will be 0.30 / new_total; verify <= 0.30
+        # in the post-norm state and that the per-signal floor still holds.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "weights": {"comment_ratio": 0.99},
+        })
+        assert load_calibration_overrides() is True
+        # After clamp to 0.30 then re-normalization across 10 weights, the
+        # clamped value sits below 0.30 (≈0.30 / 1.12 ≈ 0.268).
+        assert vibe_check.WEIGHTS["comment_ratio"] <= 0.30
+        # Per-signal floor invariant after normalization (the clamp happens
+        # pre-norm, so post-norm values can dip a touch below 0.02 only via
+        # rounding; allow that micro-tolerance).
+        assert all(w >= 0.02 - 1e-3 for w in vibe_check.WEIGHTS.values())
+
+    def test_weight_below_2pct_clamped(self, tmp_path, monkeypatch):
+        # Boundary: weight = 0.001 (below the 0.02 floor) must be clamped up.
+        # The floor exists because a signal at near-zero weight may as well
+        # be removed; clamping preserves the signal-shape invariant.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "weights": {"hallucinated_apis": 0.001},
+        })
+        assert load_calibration_overrides() is True
+        # 0.001 < 0.02 floor → clamped to 0.02 before normalize. After
+        # normalize the value is well above the 0.001 input; pin that
+        # the floor actually fired.
+        assert vibe_check.WEIGHTS["hallucinated_apis"] > 0.001
+
+    def test_weights_renormalize_to_unit_sum(self, tmp_path, monkeypatch):
+        # Positive: after any weight override, the weights must sum to ~1.0
+        # (modulo 4-decimal rounding). This is the load-bearing invariant
+        # of the overall-score formula: sum(weight_i * signal_score_i).
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "weights": {
+                "comment_ratio": 0.25,
+                "docstring_consistency": 0.20,
+            },
+        })
+        assert load_calibration_overrides() is True
+        total = sum(vibe_check.WEIGHTS.values())
+        # 4-decimal rounding per weight (10 weights) → ε ≈ 1e-3 worst-case.
+        assert total == pytest.approx(1.0, abs=1e-3)
+
+    def test_repeated_invocation_picks_up_new_file_contents(self, tmp_path, monkeypatch):
+        # Adversarial: the function does NOT cache. Each call re-reads the
+        # file from disk. If calibration_pipeline rewrites the override
+        # between two load_calibration_overrides() calls, the second call's
+        # effect must reflect the new file.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {"error_handling": {"threshold": 0.30}},
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["error_handling"]["threshold"] == 0.30
+        # Rewrite file with a different threshold.
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {"error_handling": {"threshold": 0.55}},
+        })
+        assert load_calibration_overrides() is True
+        assert vibe_check.SIGNAL_THRESHOLDS["error_handling"]["threshold"] == 0.55
+
+    def test_null_threshold_in_override_skipped(self, tmp_path, monkeypatch):
+        # Boundary: the source code guards `if new_vals[key] is not None`,
+        # so an explicit null override does NOT overwrite the existing
+        # value. This protects against the calibration pipeline emitting
+        # null when it has insufficient data to recommend a threshold.
+        monkeypatch.setattr(vibe_check, "TELEMETRY_DIR", str(tmp_path))
+        original = vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["threshold"]
+        self._write_override(tmp_path, {
+            "base_calibration": CALIBRATION_VERSION,
+            "thresholds": {
+                "docstring_consistency": {"threshold": None, "llm_baseline": 0.95},
+            },
+        })
+        assert load_calibration_overrides() is True
+        # null threshold skipped → original preserved.
+        assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["threshold"] == original
+        # Non-null co-field still updated.
+        assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["llm_baseline"] == 0.95

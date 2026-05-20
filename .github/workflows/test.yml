@@ -77,17 +77,17 @@ jobs:
       - name: Install test-only dev deps (not shipped)
         run: pip install pytest coverage
 
-      - name: Drift + calibration tests
-        run: python -m pytest tests/test_drift.py tests/test_calibration.py -v
+      - name: Drift + calibration + gh-integration tests
+        run: python -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -v
 
-      - name: Coverage report (drift + calibration source surface)
+      - name: Coverage report (drift + calibration + gh-integration source surface)
         run: |
-          coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py
+          coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py
           # Per-module coverage for the surface this PR claims to cover.
           coverage report --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py"
 
       - name: Flake check (re-run x3, fail if any flake)
         run: |
           for i in 1 2 3; do
-            python -m pytest tests/test_drift.py tests/test_calibration.py -q || exit 1
+            python -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -q || exit 1
           done
