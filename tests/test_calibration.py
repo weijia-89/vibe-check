@@ -32,6 +32,7 @@ import json
 import math
 import random
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -41,12 +42,15 @@ SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from calibration_pipeline import (  # noqa: E402
+    API_TOTAL,
     CURRENT_DECISION_T,
+    SIGNAL_SHORT,
     Budget,
     beta_hdi_equal_tailed,
     classify_label,
     cohens_d,
     cosine_sim,
+    extract_signals,
     label_priority,
     mde_cohens_d,
     mean_vec,
@@ -54,7 +58,11 @@ from calibration_pipeline import (  # noqa: E402
     pooled_sd,
     roc_auc_mannwhitney,
     roc_youden,
+    signals_row,
+    size_bucket,
     skewness,
+    stratified_unlabeled,
+    time_bucket,
 )
 import vibe_check  # noqa: E402  (module import for monkeypatching globals)
 from vibe_check import (  # noqa: E402
@@ -119,6 +127,41 @@ class TestClassifyLabel:
         # Discrimination: "llm" or "generated" in label → ai-assisted.
         assert classify_label("llm-output") == ("ai", "ai-assisted")
         assert classify_label("generated-by-model") == ("ai", "ai-assisted")
+
+    def test_partial_match_human_substring_routes_to_human(self):
+        # Discrimination: labels that CONTAIN a human-written marker but
+        # don't exact-match the canonical set fall through to the substring
+        # check at line 143-144. Pins this fallthrough so a refactor that
+        # tightens the human bucket to exact-match-only would fail loudly.
+        assert classify_label("manual-touched") == ("human", "human-written")
+        assert classify_label("hand-coded-by-team") == ("human", "human-written")
+        assert classify_label("legacy-human-written") == ("human", "human-written")
+
+    def test_partial_match_copilot_or_cursor_substring_routes_to_ai(self):
+        # Discrimination: labels containing "copilot" or "cursor" as a
+        # substring (e.g. "copilot-suggested", "cursor-team") hit the
+        # partial-match branch at line 147-148, separate from the exact
+        # canonical set at line 141. Pins both branches.
+        assert classify_label("copilot-suggested") == ("ai", "ai-assisted")
+        assert classify_label("cursor-team-pr") == ("ai", "ai-assisted")
+
+    def test_auto_plus_code_or_gen_substring_routes_to_ai(self):
+        # Discrimination: the compound pattern at line 151-152 — "auto" AND
+        # ("code" OR "gen") — catches "autogen" and "auto-code" style labels.
+        # Neither would hit the LLM/generated branch above (they don't
+        # contain those exact substrings).
+        assert classify_label("autogen") == ("ai", "ai-assisted")
+        assert classify_label("auto-code") == ("ai", "ai-assisted")
+        assert classify_label("automated-codegen") == ("ai", "ai-assisted")
+
+    def test_unblocked_ai_substring_routes_to_ai(self):
+        # Discrimination: a label containing "ai" that does NOT also
+        # contain "human" / "anti-ai" / "no ai" hits the unblocked branch
+        # at line 156. The blocked path is covered by
+        # test_anti_ai_label_routes_to_ignore above; this test covers
+        # the symmetric default-to-ai case.
+        assert classify_label("ai-pr") == ("ai", "ai-assisted")
+        assert classify_label("ai-tools") == ("ai", "ai-assisted")
 
 
 class TestLabelPriority:
@@ -446,6 +489,21 @@ class TestBetaHDI:
         lo_big, hi_big = beta_hdi_equal_tailed(50, 100)
         assert (hi_big - lo_big) < (hi_small - lo_small)
 
+    def test_inverted_inputs_return_degenerate_interval(self):
+        # Adversarial: when successes > trials (which shouldn't happen
+        # in normal use but is defensively handled), b = (trials -
+        # successes) + 1 becomes ≤ 0, which makes a*b ≤ 0 and var ≤ 0.
+        # The function returns the mean as both endpoints — a degenerate
+        # "interval" that signals the inputs were invalid. Pins the
+        # var ≤ 0 branch at line 273-274.
+        lo, hi = beta_hdi_equal_tailed(successes=10, trials=5)
+        assert lo == hi  # degenerate: zero-width interval
+        # mean = a/(a+b) where a=11, b=-4 → mean = 11/7 ≈ 1.571.
+        # This is clearly nonsensical (outside [0,1]) which IS the
+        # signal: the caller should validate inputs before relying on
+        # the result.
+        assert lo == pytest.approx(11 / 7)
+
     def test_zero_trials_degenerate_interval(self):
         # Boundary: 0 trials → Beta(1, 1) = uniform; var > 0, so CI is wide
         # but still well-defined. Just verify it doesn't crash.
@@ -521,6 +579,42 @@ class TestBudget:
         b = Budget()
         b.errors.append("test error")
         assert b.errors == ["test error"]
+
+    def test_total_cap_blocks_all_phases(self):
+        # Adversarial: when total >= API_TOTAL, gh() returns False
+        # regardless of phase or per-phase counter state. Pins the
+        # global anti-cascade ceiling that runs orthogonal to per-phase
+        # caps. If a refactor makes total a soft limit, this fails.
+        b = Budget()
+        b.total = API_TOTAL
+        assert b.gh("1") is False
+        assert b.gh("2") is False
+        assert b.gh("3") is False
+
+    def test_phase_3_increment_works(self):
+        # Discrimination: phase "3" hits the elif branch at line 96-97
+        # incrementing self.p3 (separate from p1/p2 paths). Pins both
+        # the elif clause's existence and its specific counter target.
+        b = Budget()
+        assert b.gh("3") is True
+        assert b.p3 == 1
+        assert b.p1 == 0
+        assert b.p2 == 0
+        assert b.total == 1
+
+    def test_unknown_phase_uses_total_cap_and_skips_per_phase_increment(self):
+        # Boundary: an unrecognized phase (e.g. "9") falls through the
+        # .get() defaults at lines 87-88 (lim=API_TOTAL, cur=self.total).
+        # The call counts toward `total` but no per-phase counter is
+        # incremented (the if/elif chain at 92-97 has no else clause).
+        # Pins this defensive shape so a future explicit "unknown phase"
+        # rejection would have to update this test.
+        b = Budget()
+        assert b.gh("9") is True
+        assert b.total == 1
+        assert b.p1 == 0
+        assert b.p2 == 0
+        assert b.p3 == 0
 
 
 # ---------------------------------------------------------------------------
@@ -955,3 +1049,362 @@ class TestLoadCalibrationOverrides:
         assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["threshold"] == original
         # Non-null co-field still updated.
         assert vibe_check.SIGNAL_THRESHOLDS["docstring_consistency"]["llm_baseline"] == 0.95
+
+
+# ---------------------------------------------------------------------------
+# extract_signals
+# ---------------------------------------------------------------------------
+
+
+class TestExtractSignals:
+    """
+    extract_signals(vj) -> dict[str, Any].
+
+    Reads vibe_check.py's JSON output and flattens it into a row-shaped
+    dict: overall_ai_prob (float), one float per SIGNAL_SHORT key (avg_score
+    from signal_summary[INTERNAL]), and _languages (sorted list of
+    file_analyses[].language). Missing/None branches default to safe values
+    so partial vibe_check output doesn't crash the calibration loop.
+    """
+
+    def test_happy_path_extracts_all_fields(self):
+        # Positive: full vj with overall_ai_probability, signal_summary
+        # populated for every SIGNAL_INTERNAL key, and file_analyses
+        # with mixed languages → all output fields populated.
+        vj = {
+            "overall_ai_probability": 0.73,
+            "signal_summary": {
+                "comment_ratio": {"avg_score": 0.4},
+                "docstring_consistency": {"avg_score": 0.5},
+                "naming_uniformity": {"avg_score": 0.6},
+                "error_handling": {"avg_score": 0.3},
+                "declarative_bias": {"avg_score": 0.2},
+                "function_length": {"avg_score": 0.7},
+                "comment_phrasing": {"avg_score": 0.8},
+                "hallucinated_apis": {"avg_score": 0.1},
+                "edge_case_depth": {"avg_score": 0.9},
+                "commit_metadata": {"avg_score": 0.55},
+            },
+            "file_analyses": [
+                {"language": "python"},
+                {"language": "javascript"},
+                {"language": "python"},  # dedup
+            ],
+        }
+        out = extract_signals(vj)
+        assert out["overall_ai_prob"] == 0.73
+        assert out["ccr"] == 0.4
+        assert out["docstring"] == 0.5
+        assert out["naming"] == 0.6
+        assert out["commit_meta"] == 0.55
+        # _languages is sorted and deduped via the langs set.
+        assert out["_languages"] == ["javascript", "python"]
+        # All SIGNAL_SHORT keys present in the output dict.
+        for short in SIGNAL_SHORT:
+            assert short in out
+
+    def test_missing_overall_ai_probability_defaults_to_half(self):
+        # Boundary: .get("overall_ai_probability", 0.5) — default fires
+        # when vibe_check produced no scalar grade. Pins the safe default
+        # so a missing field doesn't propagate as 0.0 (which would bias
+        # the calibration ledger toward "all PRs look human").
+        out = extract_signals({})
+        assert out["overall_ai_prob"] == 0.5
+
+    def test_missing_signal_summary_defaults_all_signals_to_zero(self):
+        # Boundary: signal_summary missing or None → ss = {}; per-signal
+        # block lookup returns {} → avg_score defaults to 0.0. Pins the
+        # safe-default chain so partial vibe_check output yields zeroed
+        # signals rather than raising KeyError.
+        out = extract_signals({"overall_ai_probability": 0.5})
+        for short in SIGNAL_SHORT:
+            assert out[short] == 0.0
+
+    def test_signal_summary_none_block_defaults_to_zero(self):
+        # Discrimination: an explicit None for one signal's block (not
+        # just a missing key) must also default that signal to 0.0 via
+        # the `block = ss.get(internal) or {}` guard. If the `or {}`
+        # fallback is dropped, this fails with TypeError.
+        vj = {"signal_summary": {"comment_ratio": None}}
+        out = extract_signals(vj)
+        assert out["ccr"] == 0.0
+
+    def test_file_analyses_missing_language_recorded_as_unknown(self):
+        # Boundary: a file_analysis entry without a language field gets
+        # "unknown" via the `str(fa.get("language") or "unknown")` chain.
+        # Pins this so a refactor that drops the fallback would surface.
+        vj = {
+            "file_analyses": [
+                {"language": "python"},
+                {},  # no language key
+                {"language": None},  # explicit None
+            ],
+        }
+        out = extract_signals(vj)
+        # Both empty-dict and None-language entries collapse to "unknown".
+        assert out["_languages"] == ["python", "unknown"]
+
+
+# ---------------------------------------------------------------------------
+# signals_row
+# ---------------------------------------------------------------------------
+
+
+class TestSignalsRow:
+    """
+    signals_row(pr, label_class, sig) -> dict.
+
+    Flattens an extract_signals() output into a TSV-writable row keyed
+    by pr_number / label_class / overall_ai_prob / each SIGNAL_SHORT.
+    The function uses sig[k] (not .get()), so missing keys raise KeyError
+    by design — incomplete extract_signals output should fail loudly,
+    not silently produce a row of zeros.
+    """
+
+    def test_happy_path_constructs_complete_row(self):
+        # Positive: a fully-populated sig dict produces a row with all
+        # expected keys and the originating pr/label_class.
+        sig = {
+            "overall_ai_prob": 0.42,
+            "ccr": 0.1, "docstring": 0.2, "naming": 0.3,
+            "error_handling": 0.4, "declarative": 0.5, "func_length": 0.6,
+            "comment_phrasing": 0.7, "hallucinated": 0.8, "edge_depth": 0.9,
+            "commit_meta": 0.55,
+        }
+        row = signals_row(42, "vibe-coded", sig)
+        assert row["pr_number"] == 42
+        assert row["label_class"] == "vibe-coded"
+        assert row["overall_ai_prob"] == 0.42
+        for short in SIGNAL_SHORT:
+            assert row[short] == sig[short]
+
+    def test_missing_signal_short_key_raises_keyerror(self):
+        # Negative: the function uses sig[k] not sig.get(k); a missing
+        # key must raise. This is intentional: incomplete signal data
+        # should surface immediately, not silently produce a zero row
+        # that pollutes the calibration ledger. Pin the contract.
+        incomplete_sig = {"overall_ai_prob": 0.5}  # no SIGNAL_SHORT keys
+        with pytest.raises(KeyError):
+            signals_row(1, "ai-assisted", incomplete_sig)
+
+
+# ---------------------------------------------------------------------------
+# size_bucket
+# ---------------------------------------------------------------------------
+
+
+class TestSizeBucket:
+    """
+    size_bucket(adds) -> str in {s0, s1, s2, s3}.
+
+    Bucketizes additions count into 4 size strata for stratified sampling.
+    Boundaries (per source): <50 → s0, <200 → s1, <500 → s2, ≥500 → s3.
+    """
+
+    @pytest.mark.parametrize(
+        "adds,expected",
+        [
+            (0, "s0"),
+            (1, "s0"),
+            (49, "s0"),    # boundary: just under 50
+            (50, "s1"),    # boundary: at 50
+            (199, "s1"),   # boundary: just under 200
+            (200, "s2"),   # boundary: at 200
+            (499, "s2"),   # boundary: just under 500
+            (500, "s3"),   # boundary: at 500
+            (10_000, "s3"),  # large
+        ],
+    )
+    def test_each_boundary(self, adds, expected):
+        # Discrimination: pin every boundary so a refactor that flips
+        # < to <= (or shifts a threshold by 1) is caught immediately.
+        # The 4 buckets feed stratified_unlabeled's per-cell quotas.
+        assert size_bucket(adds) == expected
+
+
+# ---------------------------------------------------------------------------
+# time_bucket
+# ---------------------------------------------------------------------------
+
+
+class TestTimeBucket:
+    """
+    time_bucket(merged, ref) -> str in {t0, t1, t2, t3, u}.
+
+    Bucketizes a merged-at ISO timestamp into recency strata relative
+    to a reference datetime. Boundaries: ≤90 days → t0, ≤180 → t1,
+    ≤365 → t2, >365 → t3. Returns "u" if parse_iso fails (empty or
+    malformed input). Naive datetimes are treated as UTC.
+    """
+
+    REF = datetime(2026, 5, 19, tzinfo=timezone.utc)
+
+    def test_recent_merge_routes_to_t0(self):
+        # Positive: 30 days before ref → t0 (≤90).
+        merged = "2026-04-19T12:00:00Z"
+        assert time_bucket(merged, self.REF) == "t0"
+
+    def test_each_recency_boundary(self):
+        # Discrimination: pin all four recency boundaries.
+        # 90 days exactly → t0 (≤90)
+        assert time_bucket("2026-02-18T00:00:00Z", self.REF) == "t0"
+        # 91 days → t1 (>90, ≤180)
+        assert time_bucket("2026-02-17T00:00:00Z", self.REF) == "t1"
+        # 180 days exactly → t1
+        assert time_bucket("2025-11-20T00:00:00Z", self.REF) == "t1"
+        # 181 days → t2
+        assert time_bucket("2025-11-19T00:00:00Z", self.REF) == "t2"
+        # 365 days exactly → t2
+        assert time_bucket("2025-05-19T00:00:00Z", self.REF) == "t2"
+        # 366 days → t3
+        assert time_bucket("2025-05-18T00:00:00Z", self.REF) == "t3"
+        # very old → t3
+        assert time_bucket("2020-01-01T00:00:00Z", self.REF) == "t3"
+
+    def test_empty_or_malformed_input_returns_u(self):
+        # Negative: parse_iso returns None on empty or unparseable input
+        # → time_bucket returns "u" (the unknown bucket). Pins this so
+        # callers can distinguish "no data" from "very old".
+        assert time_bucket("", self.REF) == "u"
+        assert time_bucket("not-a-date", self.REF) == "u"
+        assert time_bucket("2026-13-99T00:00:00Z", self.REF) == "u"
+
+    def test_naive_datetime_treated_as_utc(self):
+        # Boundary: an ISO timestamp without timezone info (parse_iso
+        # returns a naive datetime) gets UTC tzinfo applied at line
+        # 499-500 before the delta calculation. Without that, comparing
+        # naive vs aware datetime would raise TypeError. Pin the guard.
+        # Note: parse_iso always returns aware datetimes for inputs
+        # ending in Z (it converts Z → +00:00 first), so to actually
+        # produce a naive datetime we need an ISO string with no tz
+        # marker at all.
+        merged_naive = "2026-04-19T12:00:00"  # no Z, no offset
+        # Should not raise; should bucketize relative to UTC ref.
+        bucket = time_bucket(merged_naive, self.REF)
+        assert bucket in ("t0", "t1", "t2", "t3")
+
+
+# ---------------------------------------------------------------------------
+# stratified_unlabeled
+# ---------------------------------------------------------------------------
+
+
+class TestStratifiedUnlabeled:
+    """
+    stratified_unlabeled(pr_json, matched_label_names, ref, k) -> list[dict].
+
+    Picks k unlabeled PRs (those whose labels don't intersect
+    matched_label_names) stratified across 4 size buckets × 4 time
+    buckets = 16 cells. Quotas: target_per_size = max(1, k // 4) per
+    size bucket. Within each (size, time) cell, PRs are sorted by
+    number descending. After per-size quotas are filled, any remaining
+    capacity is filled by descending-number order across the entire
+    candidate pool.
+    """
+
+    REF = datetime(2026, 5, 19, tzinfo=timezone.utc)
+
+    def _make_pr(self, number: int, additions: int, merged: str, label_names: list[str]) -> dict:
+        """Construct a minimal PR dict matching the gh schema fields
+        stratified_unlabeled actually reads (number, additions, mergedAt,
+        labels[].name)."""
+        return {
+            "number": number,
+            "additions": additions,
+            "mergedAt": merged,
+            "labels": [{"name": n} for n in label_names],
+        }
+
+    def test_excludes_prs_with_matched_labels(self):
+        # Positive: PRs labeled with anything in matched_label_names are
+        # filtered out at line 521-522 (the candidate-pool guard).
+        prs = [
+            self._make_pr(1, 100, "2026-05-01T00:00:00Z", ["vibe-coded"]),
+            self._make_pr(2, 100, "2026-05-01T00:00:00Z", ["bug"]),
+            self._make_pr(3, 100, "2026-05-01T00:00:00Z", ["ai-assisted"]),
+        ]
+        picked = stratified_unlabeled(prs, {"vibe-coded", "ai-assisted"}, self.REF, k=10)
+        # PRs 1 and 3 excluded; only PR 2 remains as a candidate.
+        assert [p["number"] for p in picked] == [2]
+
+    def test_k_zero_returns_empty(self):
+        # Boundary: k=0 → target_per_size = max(1, 0) = 1, but the inner
+        # break check `if len(picked) >= k` fires immediately on the
+        # first append. With k=0 we expect exactly 0 PRs.
+        prs = [self._make_pr(1, 100, "2026-05-01T00:00:00Z", [])]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=0)
+        assert picked == []
+
+    def test_descending_number_order_within_cell(self):
+        # Discrimination: within a (size, time) cell, PRs are sorted by
+        # number descending (line 539). With k large enough to take
+        # everything from one cell, we should see PRs in descending
+        # number order. Pin this so a refactor that swaps to ascending
+        # order would surface — the calibration sampler treats higher
+        # PR numbers as "more recent" and prioritizes them.
+        prs = [
+            self._make_pr(10, 30, "2026-05-01T00:00:00Z", []),  # all in (s0, t0)
+            self._make_pr(20, 30, "2026-05-01T00:00:00Z", []),
+            self._make_pr(30, 30, "2026-05-01T00:00:00Z", []),
+        ]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=10)
+        numbers = [p["number"] for p in picked]
+        # All 3 picked (only one cell, k > pool); descending order.
+        assert numbers == [30, 20, 10]
+
+    def test_stratifies_across_size_buckets(self):
+        # Discrimination: with k=4 (target_per_size = 1), the algorithm
+        # picks 1 PR per size bucket (where available) before falling
+        # through to the leftover-fill at line 550. Pin that the size
+        # stratification quota is honored — the load-bearing claim of
+        # this function for the calibration ledger.
+        prs = [
+            # 2 PRs in s0 (additions < 50)
+            self._make_pr(1, 10, "2026-05-01T00:00:00Z", []),
+            self._make_pr(2, 20, "2026-05-01T00:00:00Z", []),
+            # 2 PRs in s1 (50 ≤ additions < 200)
+            self._make_pr(3, 100, "2026-05-01T00:00:00Z", []),
+            self._make_pr(4, 150, "2026-05-01T00:00:00Z", []),
+            # 2 PRs in s2 (200 ≤ additions < 500)
+            self._make_pr(5, 250, "2026-05-01T00:00:00Z", []),
+            self._make_pr(6, 400, "2026-05-01T00:00:00Z", []),
+            # 2 PRs in s3 (additions ≥ 500)
+            self._make_pr(7, 600, "2026-05-01T00:00:00Z", []),
+            self._make_pr(8, 1000, "2026-05-01T00:00:00Z", []),
+        ]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=4)
+        # Exactly 4 picked, one per size bucket. Within each size, the
+        # higher-numbered PR wins (descending sort). So we expect:
+        # s0: 2, s1: 4, s2: 6, s3: 8.
+        assert sorted(p["number"] for p in picked) == [2, 4, 6, 8]
+
+    def test_unknown_time_bucket_collapses_to_t3(self):
+        # Boundary: a PR with empty mergedAt → time_bucket returns "u"
+        # → coerced to "t3" at line 529-530 before cell assignment.
+        # Pins this coercion so PRs with missing merge dates aren't
+        # silently dropped from the candidate pool.
+        prs = [
+            self._make_pr(1, 100, "", []),  # empty mergedAt → "u" → "t3"
+        ]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=10)
+        assert [p["number"] for p in picked] == [1]
+
+    def test_leftover_fill_uses_descending_number_order(self):
+        # Discrimination: when per-size quotas are filled but k isn't
+        # met (e.g. some size buckets are empty), the algorithm falls
+        # through to lines 550-556, picking remaining candidates in
+        # descending number order, deduplicated against `seen`. Pin
+        # this to ensure deterministic sampling.
+        prs = [
+            # All in s0; k=4 means target_per_size=1, but only s0 has
+            # candidates so quotas fill 1 then leftover-fill takes 3 more.
+            self._make_pr(1, 10, "2026-05-01T00:00:00Z", []),
+            self._make_pr(2, 20, "2026-05-01T00:00:00Z", []),
+            self._make_pr(3, 30, "2026-05-01T00:00:00Z", []),
+            self._make_pr(4, 40, "2026-05-01T00:00:00Z", []),
+        ]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=4)
+        numbers = [p["number"] for p in picked]
+        # All 4 picked, descending order from both quota-fill and
+        # leftover-fill paths (which both sort descending).
+        assert numbers == [4, 3, 2, 1]
