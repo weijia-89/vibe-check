@@ -50,3 +50,44 @@ jobs:
           (printf '%s\n' '+++ b/scripts/vibe_check.py' '@@ -0,0 +1,9999 @@'; sed 's/^/+/' scripts/vibe_check.py) | \
             python scripts/vibe_check.py --format json > /tmp/dogfood.json
           python -c "import json; d=json.load(open('/tmp/dogfood.json')); assert d['grade'] in 'ABCDF'; print('dogfood grade:', d['grade'], 'prob:', d['overall_ai_probability'])"
+
+  # Two-tier CI rationale: the `test` job above commits to the project's
+  # stdlib-only shipping invariant for the tool itself (no requirements.txt,
+  # no setup.py, no pyproject.toml committed to the repo).
+  #
+  # This second job exercises the drift + calibration test surface, which
+  # uses pytest features (pytest.approx, monkeypatch, tmp_path, pytest.raises)
+  # that don't translate cleanly to unittest. pytest + coverage are installed
+  # ad-hoc here — they are test-time dev deps, never shipped — so the
+  # tool's stdlib-only runtime claim is preserved.
+  test-pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test-only dev deps (not shipped)
+        run: pip install pytest coverage
+
+      - name: Drift + calibration tests
+        run: python -m pytest tests/test_drift.py tests/test_calibration.py -v
+
+      - name: Coverage report (drift + calibration source surface)
+        run: |
+          coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py
+          # Per-module coverage for the surface this PR claims to cover.
+          coverage report --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py"
+
+      - name: Flake check (re-run x3, fail if any flake)
+        run: |
+          for i in 1 2 3; do
+            python -m pytest tests/test_drift.py tests/test_calibration.py -q || exit 1
+          done
