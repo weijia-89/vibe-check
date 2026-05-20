@@ -1,0 +1,19 @@
+{
+  "commits": [
+    {
+      "authoredDate": "2026-05-16T17:56:46Z",
+      "authors": [
+        {
+          "email": "cst0520@gmail.com",
+          "id": "U_kgDOEM456Q",
+          "login": "c-tonneslan",
+          "name": "Charlie Tonneslan"
+        }
+      ],
+      "committedDate": "2026-05-16T17:56:46Z",
+      "messageBody": "The documented dnf install lines pin resolution to the gh-cli repo\nwith --repo gh-cli. That repo only ships the gh package, so on a\nfresh Fedora install without git already present the install fails\nwith \"nothing provides git needed by gh-2.87.3-1.x86_64 from gh-cli\"\n(#12808). Dropping --repo lets dnf pull git from the system repos\nwhile still installing gh from gh-cli.\n\nThe maintainer suggested this in the issue thread after spotting\nthat other projects (docker, vagrant) use addrepo without the\nrestrictive --repo flag.\n\nCloses #12808\n\nSigned-off-by: Charlie Tonneslan <cst0520@gmail.com>",
+      "messageHeadline": "docs: drop --repo gh-cli from dnf install lines",
+      "oid": "084afb30d24be55c8d4a0a4ef296137cc9461452"
+    }
+  ]
+}

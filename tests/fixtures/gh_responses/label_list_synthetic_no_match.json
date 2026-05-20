@@ -1,0 +1,14 @@
+[
+  {
+    "name": "bug",
+    "description": "Something isn't working"
+  },
+  {
+    "name": "feature",
+    "description": "Feature request"
+  },
+  {
+    "name": "documentation",
+    "description": "Docs improvements"
+  }
+]
