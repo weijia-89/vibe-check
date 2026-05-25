@@ -63,6 +63,7 @@ The default weights in `SIGNAL_THRESHOLDS` are speculative. Tao et al. show CCR'
 
 ### Added
 
+- Branch-gap tests for `calibration_pipeline` pure helpers (`write_tsv`, `phase4`, `run_gh`, `analyze_prs`) and `check_drift_status` orchestration paths (TRIGGER/WATCH/ci_collapse); CI coverage floor `--fail-under=38` on the drift+calibration test surface.
 - `references/EVIDENCE_LEDGER.md`. A hyperlinked bibliography covering the Gemini synthesis, `RESEARCH.md`, `CLAIMS.md`, and `SKILL.md`. Every link HTTP-checked. Bot-gated URLs (ACM DOI landing pages, PMC HEAD) are flagged rather than removed.
 - `references/CLAIMS.md`. A smaller quote-level ledger for numeric claims. `scripts/check_claims.py` is the lint. It covers arXiv IDs, named papers, and numeric mentions of PSI or SWE-bench.
 - `scripts/eval_drift.py`. An offline threshold-grid replay that reads `vibe_check_telemetry.jsonl` and a labeled week or day CSV. Writes `grid_results.tsv`, `metric_roc.tsv`, and `summary.json` (best by MCC).
