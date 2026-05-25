@@ -1319,7 +1319,7 @@ class TestStratifiedUnlabeled:
 
     def test_excludes_prs_with_matched_labels(self):
         # Positive: PRs labeled with anything in matched_label_names are
-        # filtered out at line 521-522 (the candidate-pool guard).
+        # filtered out when PR labels intersect matched_label_names (candidate-pool guard).
         prs = [
             self._make_pr(1, 100, "2026-05-01T00:00:00Z", ["vibe-coded"]),
             self._make_pr(2, 100, "2026-05-01T00:00:00Z", ["bug"]),
@@ -1339,7 +1339,7 @@ class TestStratifiedUnlabeled:
 
     def test_descending_number_order_within_cell(self):
         # Discrimination: within a (size, time) cell, PRs are sorted by
-        # number descending (line 539). With k large enough to take
+        # number descending within each (size, time) cell. With k large enough to take
         # everything from one cell, we should see PRs in descending
         # number order. Pin this so a refactor that swaps to ascending
         # order would surface — the calibration sampler treats higher
@@ -1357,7 +1357,7 @@ class TestStratifiedUnlabeled:
     def test_stratifies_across_size_buckets(self):
         # Discrimination: with k=4 (target_per_size = 1), the algorithm
         # picks 1 PR per size bucket (where available) before falling
-        # through to the leftover-fill at line 550. Pin that the size
+        # through to stratified_unlabeled leftover-fill after per-size quotas. Pin that the size
         # stratification quota is honored — the load-bearing claim of
         # this function for the calibration ledger.
         prs = [
@@ -1382,7 +1382,7 @@ class TestStratifiedUnlabeled:
 
     def test_unknown_time_bucket_collapses_to_t3(self):
         # Boundary: a PR with empty mergedAt → time_bucket returns "u"
-        # → coerced to "t3" at line 529-530 before cell assignment.
+        # → time_bucket "u" coerced to "t3" before cell assignment.
         # Pins this coercion so PRs with missing merge dates aren't
         # silently dropped from the candidate pool.
         prs = [
@@ -1394,7 +1394,7 @@ class TestStratifiedUnlabeled:
     def test_leftover_fill_uses_descending_number_order(self):
         # Discrimination: when per-size quotas are filled but k isn't
         # met (e.g. some size buckets are empty), the algorithm falls
-        # through to lines 550-556, picking remaining candidates in
+        # through to leftover-fill, picking remaining candidates in
         # descending number order, deduplicated against `seen`. Pin
         # this to ensure deterministic sampling.
         prs = [

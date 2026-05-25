@@ -3,11 +3,15 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-python3 -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -q --maxfail=5
-if ! python3 -c "import coverage" 2>/dev/null; then
-  pip install coverage pytest
+PY=python3
+if [[ -x "$ROOT/.venv/bin/python" ]]; then
+  PY="$ROOT/.venv/bin/python"
 fi
-coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -q
-coverage report \
+"$PY" -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -q --maxfail=5
+if ! "$PY" -c "import coverage" 2>/dev/null; then
+  "$PY" -m pip install coverage
+fi
+"$PY" -m coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py -q
+"$PY" -m coverage report \
   --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py" \
   --fail-under=38
