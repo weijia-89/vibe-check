@@ -1041,6 +1041,7 @@ class TestCheckDriftStatusOrchestrator:
         )
         result = check_drift_status(telemetry_dir=str(tmp_path))
         assert result["raw_status"] == "TRIGGER_RECALIBRATION"
+        assert result["status"] == "TRIGGER_RECALIBRATION"
         assert len(result["drifted_signals"]) >= 2
         assert result["global_drift_mean_shift"] > 1.5
 
@@ -1083,7 +1084,7 @@ class TestCheckDriftStatusOrchestrator:
 
     def test_watch_rewrites_message_when_persistence_suppresses_trigger(self, tmp_path, monkeypatch):
         # Adversarial: M-of-N persistence downgrades the exposed status to WATCH
-        # and rewrites message to cite trips_seen / m_of_n (line 1719-1723).
+        # and rewrites message to cite trips_seen / m_of_n (_apply_persistence_rule WATCH path).
         from vibe_check import SIGNAL_THRESHOLDS
 
         monkeypatch.delenv("VIBE_CHECK_DRIFT_GLOBAL_METRIC", raising=False)
