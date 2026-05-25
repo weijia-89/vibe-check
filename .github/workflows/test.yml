@@ -58,7 +58,9 @@ jobs:
 
   # Two-tier CI rationale: the `test` job above commits to the project's
   # stdlib-only shipping invariant for the tool itself (no requirements.txt,
-  # no setup.py, no pyproject.toml committed to the repo).
+  # no setup.py; pyproject.toml allowed only for tool config — no [project]
+  # or [build-system] — see Verify stdlib-only step above).
+  # sdk-review F1: comment synced with relaxed pyproject.toml gate.
   #
   # This second job exercises the drift + calibration test surface, which
   # uses pytest features (pytest.approx, monkeypatch, tmp_path, pytest.raises)
