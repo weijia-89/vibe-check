@@ -58,7 +58,9 @@ jobs:
 
   # Two-tier CI rationale: the `test` job above commits to the project's
   # stdlib-only shipping invariant for the tool itself (no requirements.txt,
-  # no setup.py, no pyproject.toml committed to the repo).
+  # no setup.py; pyproject.toml allowed only for tool config — no [project]
+  # or [build-system] — see Verify stdlib-only step above).
+  # sdk-review F1: comment synced with relaxed pyproject.toml gate.
   #
   # This second job exercises the drift + calibration test surface, which
   # uses pytest features (pytest.approx, monkeypatch, tmp_path, pytest.raises)
@@ -88,10 +90,12 @@ jobs:
       - name: Coverage report (drift + calibration + gh-integration source surface)
         run: |
           coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py
-          # Coverage baseline (2026-05-25, tests/calibration-hardening-sdk):
-          #   eval_drift.py ≥45%, calibration_pipeline.py ≥70%,
-          #   vibe_calibration.py ≥25%, vibe_check.py ≥25% on drift/override surface.
-          # Combined floor ~38% is honest — most of vibe_check.py is unscored analyzers.
+          # sdk-review F1: only the combined floor below is enforced in CI.
+          # Per-module percentages are informational baselines (2026-05-25,
+          # tests/calibration-hardening-sdk), not separate --fail-under gates:
+          #   eval_drift.py ~45%, calibration_pipeline.py ~70%,
+          #   vibe_calibration.py ~25%, vibe_check.py ~25% on drift/override surface.
+          # Combined ~38% is honest — most of vibe_check.py is unscored analyzers.
           coverage report --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py" \
             --fail-under=38
 

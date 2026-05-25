@@ -311,9 +311,37 @@ class TestPhase1:
         tsv = (tmp_path / "label_map.tsv").read_text()
         assert "\tvibe-coded\t0\n" in tsv or tsv.endswith("\tvibe-coded\t0")
 
+    def test_phase1_breaks_label_loop_on_budget_minus_one(self, fake_run, tmp_path, monkeypatch):
+        # Adversarial: after the first label's pr-list succeeds, run_gh returns
+        # (-1, "") for the next label — phase1 `if code == -1: break` path.
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_synthetic_vibe_plus_ai.json"),
+        )
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("pr_list_synthetic_single.json"),
+        )
+        real_run_gh = calibration_pipeline.run_gh
+        calls = {"n": 0}
+
+        def gated_run_gh(budget, phase, repo, args):
+            calls["n"] += 1
+            if calls["n"] >= 3:
+                return -1, ""
+            return real_run_gh(budget, phase, repo, args)
+
+        monkeypatch.setattr(calibration_pipeline, "run_gh", gated_run_gh)
+        budget = Budget()
+        labeled, label_map, matched = phase1("owner/repo", budget, tmp_path)
+        assert len(labeled) == 1
+        assert "vibe-coded" in matched
+        assert label_map.get("vibe-coded") == "vibe-coded"
+        assert calls["n"] == 3
+
     def test_parses_commits_total_count_dict(self, fake_run, tmp_path):
         # Boundary: gh pr list may return commits as {totalCount: N} rather
-        # than a list. Pins the isinstance(commits, dict) branch at line 386-387.
+        # than a list. Pins phase1 isinstance(commits, dict) totalCount branch.
         fake_run.enqueue(
             returncode=0,
             stdout=_load("label_list_synthetic_single_vibe.json"),

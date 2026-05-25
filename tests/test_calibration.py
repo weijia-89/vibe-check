@@ -1414,7 +1414,7 @@ class TestStratifiedUnlabeled:
     def test_skips_duplicate_pr_numbers_in_pool(self):
         # Boundary: if the candidate pool contains the same PR number twice
         # (malformed gh payload), the `if n in seen: continue` guard at
-        # line 544-545 must dedupe without double-counting toward k.
+        # stratified_unlabeled `if n in seen` guard must dedupe without double-counting toward k.
         prs = [
             self._make_pr(5, 30, "2026-05-01T00:00:00Z", []),
             self._make_pr(5, 30, "2026-05-01T00:00:00Z", []),  # duplicate number
