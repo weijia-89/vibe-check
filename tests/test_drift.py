@@ -996,3 +996,108 @@ class TestCheckDriftStatusOrchestrator:
         for k in ("global_drift_mean_shift", "global_drift_sinkhorn", "global_drift_psi"):
             assert k in result
             assert isinstance(result[k], (int, float))
+
+    def _write_multi_signal_telemetry(
+        self,
+        tmp_path: Path,
+        sig_names: list[str],
+        baseline_values: dict[str, float],
+        recent_values: dict[str, float],
+        n: int = 100,
+        *,
+        confidence_interval: list[float] | None = None,
+    ) -> None:
+        """Write JSONL with explicit per-signal values for orchestrator paths."""
+        log = tmp_path / "vibe_check_telemetry.jsonl"
+        baseline_n = int(n * 0.6)
+        recent_n = n - baseline_n
+        lines = []
+        for _ in range(baseline_n):
+            payload: dict = {"signals": {s: baseline_values[s] for s in sig_names}}
+            if confidence_interval is not None:
+                payload["confidence_interval"] = confidence_interval
+            lines.append(json.dumps(payload))
+        for _ in range(recent_n):
+            payload = {"signals": {s: recent_values[s] for s in sig_names}}
+            if confidence_interval is not None:
+                payload["confidence_interval"] = confidence_interval
+            lines.append(json.dumps(payload))
+        log.write_text("\n".join(lines) + "\n")
+
+    def test_trigger_recalibration_when_two_signals_drift(self, tmp_path, monkeypatch):
+        # Positive: ≥2 per-signal ADWIN trips AND global mean_shift above threshold
+        # → raw_status TRIGGER_RECALIBRATION (may become WATCH under persistence).
+        from vibe_check import SIGNAL_THRESHOLDS
+
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_GLOBAL_METRIC", raising=False)
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_PERSISTENCE_M", raising=False)
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_PERSISTENCE_N", raising=False)
+        sig_a, sig_b = list(SIGNAL_THRESHOLDS.keys())[:2]
+        self._write_multi_signal_telemetry(
+            tmp_path,
+            [sig_a, sig_b],
+            baseline_values={sig_a: 0.1, sig_b: 0.1},
+            recent_values={sig_a: 0.9, sig_b: 0.9},
+        )
+        result = check_drift_status(telemetry_dir=str(tmp_path))
+        assert result["raw_status"] == "TRIGGER_RECALIBRATION"
+        assert len(result["drifted_signals"]) >= 2
+        assert result["global_drift_mean_shift"] > 1.5
+
+    def test_trigger_alert_on_single_signal_drift(self, tmp_path, monkeypatch):
+        # Discrimination: exactly one drifted signal routes to manual review,
+        # not full recalibration (the ≥2-signal branch is bypassed).
+        from vibe_check import SIGNAL_THRESHOLDS
+
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_GLOBAL_METRIC", raising=False)
+        sig_name = next(iter(SIGNAL_THRESHOLDS.keys()))
+        self._write_multi_signal_telemetry(
+            tmp_path,
+            [sig_name],
+            baseline_values={sig_name: 0.05},
+            recent_values={sig_name: 0.95},
+        )
+        result = check_drift_status(telemetry_dir=str(tmp_path))
+        assert result["raw_status"] == "TRIGGER_ALERT_MANUAL_REVIEW"
+        assert len(result["drifted_signals"]) == 1
+        assert sig_name in result["drifted_signals"]
+
+    def test_ci_collapse_triggers_manual_review_without_signal_drift(self, tmp_path, monkeypatch):
+        # Boundary: narrow recent confidence intervals (<0.15 width) trigger
+        # TRIGGER_ALERT even when per-signal means are stable.
+        from vibe_check import SIGNAL_THRESHOLDS
+
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_GLOBAL_METRIC", raising=False)
+        sig_name = next(iter(SIGNAL_THRESHOLDS.keys()))
+        self._write_multi_signal_telemetry(
+            tmp_path,
+            [sig_name],
+            baseline_values={sig_name: 0.5},
+            recent_values={sig_name: 0.5},
+            confidence_interval=[0.45, 0.55],
+        )
+        result = check_drift_status(telemetry_dir=str(tmp_path))
+        assert result["ci_collapse"] is True
+        assert result["raw_status"] == "TRIGGER_ALERT_MANUAL_REVIEW"
+        assert result["drifted_signals"] == []
+
+    def test_watch_rewrites_message_when_persistence_suppresses_trigger(self, tmp_path, monkeypatch):
+        # Adversarial: M-of-N persistence downgrades the exposed status to WATCH
+        # and rewrites message to cite trips_seen / m_of_n (line 1719-1723).
+        from vibe_check import SIGNAL_THRESHOLDS
+
+        monkeypatch.delenv("VIBE_CHECK_DRIFT_GLOBAL_METRIC", raising=False)
+        monkeypatch.setenv("VIBE_CHECK_DRIFT_PERSISTENCE_M", "2")
+        monkeypatch.setenv("VIBE_CHECK_DRIFT_PERSISTENCE_N", "3")
+        sig_a, sig_b = list(SIGNAL_THRESHOLDS.keys())[:2]
+        self._write_multi_signal_telemetry(
+            tmp_path,
+            [sig_a, sig_b],
+            baseline_values={sig_a: 0.1, sig_b: 0.1},
+            recent_values={sig_a: 0.9, sig_b: 0.9},
+        )
+        result = check_drift_status(telemetry_dir=str(tmp_path))
+        assert result["raw_status"] == "TRIGGER_RECALIBRATION"
+        assert result["status"] == "WATCH"
+        assert result["message"].startswith("WATCH:")
+        assert "1/2 required" in result["message"]
