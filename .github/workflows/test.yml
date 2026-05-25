@@ -24,8 +24,13 @@ jobs:
       - name: Verify stdlib-only (no pip install)
         run: |
           # Project commits to stdlib-only. Confirm there is no requirements file.
-          if [ -f requirements.txt ] || [ -f setup.py ] || [ -f pyproject.toml ]; then
+          if [ -f requirements.txt ] || [ -f setup.py ]; then
             echo "Project is stdlib-only by design; no requirements/setup files expected."
+            exit 1
+          fi
+          # pyproject.toml is allowed when it holds tool config only (no [project]).
+          if [ -f pyproject.toml ] && grep -qE '^\[project\]|^\[build-system\]' pyproject.toml; then
+            echo "pyproject.toml must not declare a package; project is stdlib-only."
             exit 1
           fi
 
@@ -83,8 +88,12 @@ jobs:
       - name: Coverage report (drift + calibration + gh-integration source surface)
         run: |
           coverage run --source=scripts -m pytest tests/test_drift.py tests/test_calibration.py tests/test_gh_integration.py
-          # Per-module coverage for the surface this PR claims to cover.
-          coverage report --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py"
+          # Coverage baseline (2026-05-25, tests/calibration-hardening-sdk):
+          #   eval_drift.py ≥45%, calibration_pipeline.py ≥70%,
+          #   vibe_calibration.py ≥25%, vibe_check.py ≥25% on drift/override surface.
+          # Combined floor ~38% is honest — most of vibe_check.py is unscored analyzers.
+          coverage report --include="scripts/eval_drift.py,scripts/calibration_pipeline.py,scripts/vibe_calibration.py,scripts/vibe_check.py" \
+            --fail-under=38
 
       - name: Flake check (re-run x3, fail if any flake)
         run: |

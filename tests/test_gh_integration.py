@@ -51,8 +51,10 @@ from calibration_pipeline import (  # noqa: E402
     P1_API,
     Budget,
     VIBE_CHECK,
+    analyze_prs,
     fetch_pr_detail,
     phase1,
+    run_gh,
     run_vibe,
 )
 
@@ -292,6 +294,206 @@ class TestPhase1:
         budget = Budget()
         with pytest.raises(json.JSONDecodeError):
             phase1("owner/repo", budget, tmp_path)
+
+    def test_pr_list_nonzero_marks_zero_count_and_continues(self, fake_run, tmp_path):
+        # Boundary: a per-label gh pr list call that exits nonzero sets
+        # count=0 and continues (does not abort the whole phase1 loop).
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_synthetic_single_vibe.json"),
+        )
+        fake_run.enqueue(returncode=1, stdout="", stderr="rate limited")
+        budget = Budget()
+        labeled, label_map, matched = phase1("owner/repo", budget, tmp_path)
+        assert matched == {"vibe-coded"}
+        assert labeled == []
+        assert label_map["vibe-coded"] == "vibe-coded"
+        tsv = (tmp_path / "label_map.tsv").read_text()
+        assert "\tvibe-coded\t0\n" in tsv or tsv.endswith("\tvibe-coded\t0")
+
+    def test_parses_commits_total_count_dict(self, fake_run, tmp_path):
+        # Boundary: gh pr list may return commits as {totalCount: N} rather
+        # than a list. Pins the isinstance(commits, dict) branch at line 386-387.
+        fake_run.enqueue(
+            returncode=0,
+            stdout=_load("label_list_synthetic_single_vibe.json"),
+        )
+        pr_payload = json.dumps(
+            [
+                {
+                    "number": 77,
+                    "title": "feat",
+                    "author": {"login": "dev"},
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "mergedAt": "2026-01-02T00:00:00Z",
+                    "additions": 10,
+                    "deletions": 1,
+                    "changedFiles": 1,
+                    "commits": {"totalCount": 4},
+                    "labels": [{"name": "vibe-coded"}],
+                }
+            ]
+        )
+        fake_run.enqueue(returncode=0, stdout=pr_payload)
+        budget = Budget()
+        labeled, _, _ = phase1("owner/repo", budget, tmp_path)
+        assert len(labeled) == 1
+        assert labeled[0]["commit_count"] == 4
+
+
+# ---------------------------------------------------------------------------
+# run_gh
+# ---------------------------------------------------------------------------
+
+
+class TestRunGh:
+    """run_gh(budget, phase, repo, args) -> (code, stdout). Budget gate + argv."""
+
+    def test_budget_exhausted_skips_subprocess(self, fake_run):
+        # Boundary: when budget.gh() returns False, run_gh short-circuits
+        # with (-1, "") and never invokes subprocess.
+        budget = Budget()
+        budget.p1 = P1_API
+        code, out = run_gh(budget, "1", "owner/repo", ["label", "list"])
+        assert code == -1
+        assert out == ""
+        assert fake_run.calls == []
+
+    def test_subprocess_exception_returns_999(self, fake_run):
+        # Negative: subprocess.run raises → code 999, error logged on budget.
+        fake_run.enqueue_exc(RuntimeError("gh unavailable"))
+        budget = Budget()
+        code, out = run_gh(budget, "1", "owner/repo", ["label", "list"])
+        assert code == 999
+        assert out == ""
+        assert any("gh exc" in e for e in budget.errors)
+
+    def test_nonzero_returncode_appends_budget_error(self, fake_run):
+        # Negative: gh exits nonzero → stderr snippet appended to budget.errors.
+        fake_run.enqueue(returncode=1, stdout="", stderr="API rate limit")
+        budget = Budget()
+        code, out = run_gh(budget, "1", "owner/repo", ["label", "list"])
+        assert code == 1
+        assert out == ""
+        assert any("gh fail" in e for e in budget.errors)
+
+    def test_argv_prefix_pins_gh_repo_form(self, fake_run):
+        # Adversarial: argv must begin with gh -R <repo> so refactors can't
+        # drop the repo scoping that prevents cross-repo leakage.
+        fake_run.enqueue(returncode=0, stdout="[]")
+        run_gh(Budget(), "2", "acme/widget", ["pr", "list"])
+        assert fake_run.calls[0][0][:3] == ["gh", "-R", "acme/widget"]
+
+
+# ---------------------------------------------------------------------------
+# analyze_prs
+# ---------------------------------------------------------------------------
+
+
+class TestAnalyzePrs:
+    """
+    analyze_prs(repo, budget, phase, pr_rows, diff_dir, max_prs) -> signal rows.
+
+    Chains fetch_pr_detail → run_vibe → extract_signals → signals_row.
+    Tests mock the gh/vibe subprocess boundary; no network.
+    """
+
+    def _vj(self) -> dict:
+        return {
+            "overall_ai_probability": 0.75,
+            "signal_summary": {
+                "comment_ratio": {"avg_score": 0.4},
+                "docstring_consistency": {"avg_score": 0.5},
+                "naming_uniformity": {"avg_score": 0.6},
+                "error_handling": {"avg_score": 0.3},
+                "declarative_bias": {"avg_score": 0.2},
+                "function_length": {"avg_score": 0.7},
+                "comment_phrasing": {"avg_score": 0.8},
+                "hallucinated_apis": {"avg_score": 0.1},
+                "edge_case_depth": {"avg_score": 0.9},
+                "commit_metadata": {"avg_score": 0.55},
+            },
+            "file_analyses": [{"language": "python"}],
+        }
+
+    def test_happy_path_returns_signal_rows(self, tmp_path, monkeypatch):
+        diff_path = tmp_path / "d" / "pr_9.diff"
+        diff_path.parent.mkdir()
+        diff_path.write_text("+x\n")
+
+        def fake_fetch(_repo, _budget, _phase, pr, diff_dir):
+            assert pr == 9
+            return diff_dir / "pr_9.diff", "fix: thing"
+
+        monkeypatch.setattr(calibration_pipeline, "fetch_pr_detail", fake_fetch)
+        monkeypatch.setattr(calibration_pipeline, "run_vibe", lambda dp: self._vj())
+
+        rows = analyze_prs(
+            "owner/repo",
+            Budget(),
+            "2",
+            [{"pr_number": 9, "label_class": "vibe-coded"}],
+            tmp_path / "d",
+            max_prs=5,
+        )
+        assert len(rows) == 1
+        assert rows[0]["pr_number"] == 9
+        assert rows[0]["label_class"] == "vibe-coded"
+        assert rows[0]["_languages"] == ["python"]
+
+    def test_skips_row_when_fetch_returns_none(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            calibration_pipeline,
+            "fetch_pr_detail",
+            lambda *_a, **_k: (None, ""),
+        )
+        monkeypatch.setattr(
+            calibration_pipeline,
+            "run_vibe",
+            lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not run")),
+        )
+        rows = analyze_prs(
+            "owner/repo",
+            Budget(),
+            "2",
+            [{"pr_number": 1, "label_class": "human-written"}],
+            tmp_path,
+            max_prs=1,
+        )
+        assert rows == []
+
+    def test_skips_row_when_run_vibe_returns_none(self, tmp_path, monkeypatch):
+        diff_path = tmp_path / "pr_1.diff"
+        diff_path.write_text("+x\n")
+        monkeypatch.setattr(
+            calibration_pipeline,
+            "fetch_pr_detail",
+            lambda *_a, **_k: (diff_path, ""),
+        )
+        monkeypatch.setattr(calibration_pipeline, "run_vibe", lambda *_a, **_k: None)
+        rows = analyze_prs(
+            "owner/repo",
+            Budget(),
+            "2",
+            [{"pr_number": 1, "label_class": "ai-assisted"}],
+            tmp_path,
+            max_prs=1,
+        )
+        assert rows == []
+
+    def test_respects_max_prs_slice(self, tmp_path, monkeypatch):
+        # Boundary: only the first max_prs rows are processed even when the
+        # input list is longer.
+        seen: list[int] = []
+
+        def fake_fetch(_repo, _budget, _phase, pr, _diff_dir):
+            seen.append(pr)
+            return None, ""
+
+        monkeypatch.setattr(calibration_pipeline, "fetch_pr_detail", fake_fetch)
+        pr_rows = [{"pr_number": i, "label_class": "vibe-coded"} for i in (1, 2, 3)]
+        analyze_prs("owner/repo", Budget(), "2", pr_rows, tmp_path, max_prs=2)
+        assert seen == [1, 2]
 
 
 # ---------------------------------------------------------------------------

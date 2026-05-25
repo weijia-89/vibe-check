@@ -55,6 +55,7 @@ from calibration_pipeline import (  # noqa: E402
     mde_cohens_d,
     mean_vec,
     parse_iso,
+    phase4,
     pooled_sd,
     roc_auc_mannwhitney,
     roc_youden,
@@ -63,6 +64,7 @@ from calibration_pipeline import (  # noqa: E402
     skewness,
     stratified_unlabeled,
     time_bucket,
+    write_tsv,
 )
 import vibe_check  # noqa: E402  (module import for monkeypatching globals)
 from vibe_check import (  # noqa: E402
@@ -1408,3 +1410,112 @@ class TestStratifiedUnlabeled:
         # All 4 picked, descending order from both quota-fill and
         # leftover-fill paths (which both sort descending).
         assert numbers == [4, 3, 2, 1]
+
+    def test_skips_duplicate_pr_numbers_in_pool(self):
+        # Boundary: if the candidate pool contains the same PR number twice
+        # (malformed gh payload), the `if n in seen: continue` guard at
+        # line 544-545 must dedupe without double-counting toward k.
+        prs = [
+            self._make_pr(5, 30, "2026-05-01T00:00:00Z", []),
+            self._make_pr(5, 30, "2026-05-01T00:00:00Z", []),  # duplicate number
+            self._make_pr(4, 30, "2026-05-01T00:00:00Z", []),
+        ]
+        picked = stratified_unlabeled(prs, set(), self.REF, k=10)
+        assert [p["number"] for p in picked] == [5, 4]
+
+
+# ---------------------------------------------------------------------------
+# write_tsv
+# ---------------------------------------------------------------------------
+
+
+class TestWriteTSV:
+    """write_tsv(path, headers, rows) — tab-delimited export with mkdir."""
+
+    def test_writes_header_and_rows(self, tmp_path):
+        path = tmp_path / "nested" / "out.tsv"
+        write_tsv(path, ["col_a", "col_b"], [{"col_a": "1", "col_b": "2"}])
+        assert path.exists()
+        lines = path.read_text().splitlines()
+        assert lines[0] == "col_a\tcol_b"
+        assert lines[1] == "1\t2"
+
+    def test_ignores_extra_dict_keys(self, tmp_path):
+        # Negative: extrasaction="ignore" — stray keys must not crash the writer.
+        path = tmp_path / "out.tsv"
+        write_tsv(path, ["only"], [{"only": "x", "extra": "drop-me"}])
+        assert path.read_text().splitlines()[1] == "x"
+
+    def test_empty_rows_writes_header_only(self, tmp_path):
+        # Boundary: zero data rows still emits the header line.
+        path = tmp_path / "out.tsv"
+        write_tsv(path, ["a"], [])
+        assert path.read_text() == "a\n"
+
+
+# ---------------------------------------------------------------------------
+# phase4 (pure stats orchestration on in-memory rows)
+# ---------------------------------------------------------------------------
+
+
+class TestPhase4:
+    """
+    phase4(signals_rows, expanded_rows, out, low_confidence) -> summary dict.
+
+    Network-free: consumes pre-built signal rows and writes TSV/JSON artifacts.
+    """
+
+    def _labeled_row(self, label_class: str, prob: float) -> dict:
+        row = {
+            "label_class": label_class,
+            "overall_ai_prob": prob,
+            "_languages": ["python"],
+        }
+        for short in SIGNAL_SHORT:
+            row[short] = prob if label_class == "vibe-coded" else 1.0 - prob
+        return row
+
+    def _expanded_row(self, pseudo: str, additions: int = 100) -> dict:
+        return {
+            "pseudo_label": pseudo,
+            "author": "dev1",
+            "additions": additions,
+            "merged": "2026-05-01T00:00:00Z",
+        }
+
+    def test_writes_artifacts_and_summary(self, tmp_path):
+        # Positive: ≥5 rows per labeled class triggers descriptive + discrimination paths.
+        signals = (
+            [self._labeled_row("vibe-coded", 0.85) for _ in range(5)]
+            + [self._labeled_row("human-written", 0.15) for _ in range(5)]
+        )
+        expanded = (
+            [self._expanded_row("likely-vibe-coded", 600) for _ in range(3)]
+            + [self._expanded_row("likely-human", 30) for _ in range(3)]
+            + [self._expanded_row("ambiguous", 250) for _ in range(2)]
+        )
+        summary = phase4(signals, expanded, tmp_path, low_confidence=False)
+        assert summary["labeled_vibe_coded"] == 5
+        assert summary["labeled_human"] == 5
+        assert (tmp_path / "descriptive_stats.tsv").exists()
+        assert (tmp_path / "discrimination.tsv").exists()
+        assert (tmp_path / "dataset_summary.json").exists()
+        assert "python" in summary["languages_observed"]
+
+    def test_low_confidence_flag_adds_warning(self, tmp_path):
+        # Boundary: low_confidence=True appends LABELED_LT_10 to dataset_quality_warnings.
+        signals = [self._labeled_row("vibe-coded", 0.9) for _ in range(5)]
+        expanded = [self._expanded_row("likely-vibe-coded")]
+        summary = phase4(signals, expanded, tmp_path, low_confidence=True)
+        assert any("LABELED_LT_10" in w for w in summary["dataset_quality_warnings"])
+
+    def test_undersampled_class_emits_warning(self, tmp_path):
+        # Negative: a class with <5 rows is skipped in descriptive stats but
+        # triggers UNDERSAMPLED warning in the summary.
+        signals = (
+            [self._labeled_row("vibe-coded", 0.9) for _ in range(5)]
+            + [self._labeled_row("ai-assisted", 0.5)]  # N=1 → undersampled
+        )
+        expanded = [self._expanded_row("likely-vibe-coded")]
+        summary = phase4(signals, expanded, tmp_path, low_confidence=False)
+        assert any(w.startswith("UNDERSAMPLED:ai-assisted") for w in summary["dataset_quality_warnings"])
